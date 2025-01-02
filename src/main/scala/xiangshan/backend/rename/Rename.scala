@@ -34,7 +34,7 @@ import xiangshan.mem.{EewLog2, GenUSWholeEmul}
 import xiangshan.mem.GenRealFlowNum
 import xiangshan.backend.trace._
 import xiangshan.backend.decode.isa.bitfield.{OPCODE5Bit, XSInstBitFields}
-import xiangshan.backend.fu.util.CSRConst
+import xiangshan.backend.fu.NewCSR.CSROoORead
 import yunsuan.{VfaluType, VipuType}
 
 class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelper with HasPerfEvents {
@@ -282,8 +282,9 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     inst(i) := uops(i).instr.asTypeOf(new XSInstBitFields)
     isCsr(i) := inst(i).OPCODE5Bit === OPCODE5Bit.SYSTEM && inst(i).FUNCT3(1, 0) =/= 0.U
     isCsrr(i) := isCsr(i) && inst(i).FUNCT3 === BitPat("b?1?") && inst(i).RS1 === 0.U
-    isRoCsrr(i) := isCsrr(i) && LookupTreeDefault(
-      inst(i).CSRIDX, false.B, CSRConst.roCsrrAddr.map(_.U -> true.B))
+    // isRoCsrr(i) := isCsrr(i) && LookupTreeDefault(
+    //   inst(i).CSRIDX, true.B, CSROoORead.notRoCsrrAddr.map(_.U -> false.B))
+    isRoCsrr(i) := false.B
 
     /*
      * For read-only CSRs, CSRR instructions do not need to wait forward instructions to finish.
@@ -292,7 +293,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
      *   do not require write to any CSR.
      */
     uops(i).waitForward := io.in(i).bits.waitForward && !isRoCsrr(i)
-    uops(i).blockBackward := io.in(i).bits.blockBackward && !isCsrr(i)
+    uops(i).blockBackward := io.in(i).bits.blockBackward && !isRoCsrr(i)
 
     // update cf according to ssit result
     uops(i).storeSetHit := io.ssit(i).valid
