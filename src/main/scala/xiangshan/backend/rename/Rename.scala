@@ -282,15 +282,15 @@ class Rename(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHe
     inst(i) := uops(i).instr.asTypeOf(new XSInstBitFields)
     isCsr(i) := inst(i).OPCODE5Bit === OPCODE5Bit.SYSTEM && inst(i).FUNCT3(1, 0) =/= 0.U
     isCsrr(i) := isCsr(i) && inst(i).FUNCT3 === BitPat("b?1?") && inst(i).RS1 === 0.U
-    // isRoCsrr(i) := isCsrr(i) && LookupTreeDefault(
-    //   inst(i).CSRIDX, true.B, CSROoORead.notRoCsrrAddr.map(_.U -> false.B))
-    isRoCsrr(i) := false.B
+    isRoCsrr(i) := isCsrr(i) && LookupTreeDefault(
+      inst(i).CSRIDX, true.B, CSROoORead.notRoCsrrAddr.map(_.U -> false.B))
 
     /*
-     * For read-only CSRs, CSRR instructions do not need to wait forward instructions to finish.
-     * For all CSRs, CSRR instructions do not need to block backward instructions for issuing.
-     * Signal "isCsrr" contains not only alias instruction CSRR, but also other csr instructions which
-     *   do not require write to any CSR.
+     * For most CSRs, CSRR instructions do not need to wait forward instructions.
+     *
+     * For All CSRs, CSRR instructions do not need to block backward instructions.
+     *
+     * Signal "isCsrr" contains not only "CSRR", but also other CSR instructions that do not require writing to CSR.
      */
     uops(i).waitForward := io.in(i).bits.waitForward && !isRoCsrr(i)
     uops(i).blockBackward := io.in(i).bits.blockBackward && !isRoCsrr(i)
