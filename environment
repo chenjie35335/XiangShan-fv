@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+export NEMU_HOME=$(realpath ../NEMU)
+export NOOP_HOME=$(realpath .)
+export AM_HOME=$(realpath ../abstrace-machine)
