@@ -22,7 +22,7 @@ import chisel3._
 import device.{AXI4RAMWrapper, SimJTAG}
 import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule, LazyModuleImp}
 import utils.GTimer
-import xiangshan.{DebugOptions, DebugOptionsKey}
+import xiangshan.{DebugOptions, DebugOptionsKey, XSCore}
 import chipsalliance.rocketchip.config._
 import freechips.rocketchip.devices.debug._
 import difftest._

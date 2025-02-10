@@ -414,14 +414,93 @@ class BlockHelper(latency: Int)(implicit p: Parameters) extends XSModule {
   }
 }
 
-class PTEHelper() extends ExtModule {
-  val clock  = IO(Input(Clock()))
+class PteStruct extends Bundle {
+  val v = UInt(1.W)
+  val r = UInt(1.W)
+  val w = UInt(1.W)
+  val x = UInt(1.W)
+  val u = UInt(1.W)
+  val g = UInt(1.W)
+  val a = UInt(1.W)
+  val d = UInt(1.W)
+  val rsw = UInt(1.W)
+  val ppn = UInt(44.W)
+  val pad = UInt(10.W)
+}
+
+class PTEHelper() extends Module {
   val enable = IO(Input(Bool()))
   val satp   = IO(Input(UInt(64.W)))
   val vpn    = IO(Input(UInt(64.W)))
   val pte    = IO(Output(UInt(64.W)))
   val level  = IO(Output(UInt(8.W)))
   val pf     = IO(Output(UInt(8.W)))
+
+  def VPNi(int: UInt, i: Int) : UInt = {
+    ((vpn) >> (18 - 9 * (i)))(8,0)
+  }
+
+  def pte_helper(satp: UInt, vpn: UInt, pte: UInt, level: UInt) : UInt = {
+      val pg_base  = WireInit(VecInit(Seq.fill(3)(0.U(64.W))))
+      val pte_addr = WireInit(VecInit(Seq.fill(3)(0.U(64.W))))
+      val pte_tp   = WireInit(VecInit(Seq.fill(3)(0.U.asTypeOf(new PteStruct))))
+      val ret      = WireInit(1.U(8.W))
+      val end      = WireInit(VecInit(Seq.fill(3)(false.B)))
+
+      pg_base(0)  := satp << 12
+      pte_addr(0) := pg_base(0) + VPNi(vpn, 0) << 3
+      pte_tp(0) := DontCare
+      pte := pte_tp(0)
+
+      when(!pte_tp(0).v) {
+        ret := 1.U
+        end(0) := true.B
+      }
+      when((pte_tp(0).r | pte_tp(0).x).asBool) {
+        ret := 0.U
+        end(0) := true.B
+      }
+      pg_base(1) := pte_tp(0).ppn << 12
+
+      when(!end(0)) {
+        pte_addr(1) := pg_base(1) + VPNi(vpn, 1) << 3
+        pte_tp(1) := DontCare
+        pte := pte_tp(1)
+
+        when(!pte_tp(1).v) {
+          ret := 1.U
+          end(1) := true.B
+        }
+        when((pte_tp(1).r | pte_tp(1).x).asBool) {
+          ret := 0.U
+          end(1) := true.B
+        }
+        pg_base(2) := pte_tp(1).ppn << 12
+        when(!end(1)) {
+          pte_addr(2) := pg_base(2) + VPNi(vpn, 2) << 3
+          pte_tp(2) := DontCare
+          pte := pte_tp(2)
+
+          when(!pte_tp(2).v) {
+            ret := 1.U
+            end(2) := true.B
+          }
+          when((pte_tp(2).r | pte_tp(2).x).asBool) {
+            ret := 0.U
+            end(2) := true.B
+          }
+        }
+      }
+      ret
+  }
+
+  val pf_reg = RegInit(0.U(8.W))
+  when(enable) {
+    pf_reg := pte_helper(satp, vpn, pte, level)
+  }
+
+  pf := pf_reg
+
 }
 
 class FakePTW()(implicit p: Parameters) extends XSModule with HasPtwConst {

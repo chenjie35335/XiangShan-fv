@@ -892,9 +892,10 @@ class DCacheWrapper()(implicit p: Parameters) extends LazyModule with HasXSParam
 
   lazy val module = new LazyModuleImp(this) with HasPerfEvents {
     val io = IO(new DCacheIO)
-    val perfEvents = if (!useDcache) {
+    val enableFormal = true
+    val perfEvents = if (enableFormal) {
       // a fake dcache which uses dpi-c to access memory, only for debug usage!
-      val fake_dcache = Module(new FakeDCache())
+      val fake_dcache = Module(new FakeDCache_Fv())
       io <> fake_dcache.io
       Seq()
     }

@@ -20,11 +20,12 @@ import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.ExtModule
+import chisel3.util.experimental.BoringUtils
 import freechips.rocketchip.amba.axi4.{AXI4EdgeParameters, AXI4MasterNode, AXI4SlaveNode}
 import freechips.rocketchip.diplomacy.{AddressSet, InModuleBody, LazyModule, LazyModuleImp, RegionType}
 import utils.MaskExpand
 
-class RAMHelper(memByte: BigInt) extends ExtModule {
+class RAMHelper(memByte: BigInt) extends ExtModule{
   val DataBits = 64
 
   val clk   = IO(Input(Clock()))
