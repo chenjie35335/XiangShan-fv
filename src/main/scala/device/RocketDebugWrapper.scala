@@ -111,6 +111,8 @@ object XSDebugModuleParams {
 
 case object EnableJtag extends Field[Bool]
 
+case object EnableFormal extends Field[Bool]
+
 class SimJTAG(tickDelay: Int = 50)(implicit val p: Parameters) extends ExtModule(Map("TICK_DELAY" -> IntParam(tickDelay)))
   with HasExtModuleResource {
 

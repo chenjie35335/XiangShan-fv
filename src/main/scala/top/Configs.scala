@@ -14,6 +14,7 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
+
 package top
 
 import chisel3._
@@ -30,8 +31,23 @@ import xiangshan.backend.dispatch.DispatchParameters
 import xiangshan.backend.exu.ExuParameters
 import xiangshan.cache.DCacheParameters
 import xiangshan.cache.mmu.{L2TLBParameters, TLBParameters}
-import device.{EnableJtag, XSDebugModuleParams}
+import device.{EnableFormal, EnableJtag, XSDebugModuleParams}
 import huancun._
+// the config for only xiangshan core, not soc
+class CoreConfig(n: Int) extends Config((site,here,up) => {
+  case XLen => 64
+  case DebugOptionsKey => DebugOptions()
+  case SoCParamsKey => SoCParameters()
+  case PMParameKey => PMParameters()
+  case XSCoreParamsKey => XSCoreParameters()
+  case ExportDebug => DebugAttachParams(protocols = Set(JTAG))
+  case DebugModuleKey => Some(XSDebugModuleParams(site(XLen)))
+  case JtagDTMKey => JtagDTMKey
+  case MaxHartIdBits => 2
+  case EnableJtag => true.B
+  //support formal verification
+  case EnableFormal => false.B
+})
 
 class BaseConfig(n: Int) extends Config((site, here, up) => {
   case XLen => 64
@@ -45,6 +61,121 @@ class BaseConfig(n: Int) extends Config((site, here, up) => {
   case MaxHartIdBits => 2
   case EnableJtag => true.B
 })
+
+class MinimalXSConfig(n: Int) extends Config(
+  new CoreConfig(n).alter((site, here, up) => {
+    case XSCoreParamsKey => up(XSCoreParamsKey).copy(
+      DecodeWidth = 2,
+      RenameWidth = 2,
+      FetchWidth = 4,
+      IssQueSize = 8,
+      NRPhyRegs = 64,
+      LoadQueueSize = 16,
+      LoadQueueNWriteBanks = 4,
+      StoreQueueSize = 12,
+      StoreQueueNWriteBanks = 4,
+      RobSize = 32,
+      FtqSize = 8,
+      IBufSize = 16,
+      StoreBufferSize = 4,
+      StoreBufferThreshold = 3,
+      dpParams = DispatchParameters(
+        IntDqSize = 12,
+        FpDqSize = 12,
+        LsDqSize = 12,
+        IntDqDeqWidth = 4,
+        FpDqDeqWidth = 4,
+        LsDqDeqWidth = 4
+      ),
+      exuParameters = ExuParameters(
+        JmpCnt = 1,
+        AluCnt = 2,
+        MulCnt = 0,
+        MduCnt = 1,
+        FmacCnt = 1,
+        FmiscCnt = 1,
+        FmiscDivSqrtCnt = 0,
+        LduCnt = 2,
+        StuCnt = 2
+      ),
+      prefetcher = None,
+      icacheParameters = ICacheParameters(
+        nSets = 64, // 16KB ICache
+        tagECC = Some("parity"),
+        dataECC = Some("parity"),
+        replacer = Some("setplru"),
+        nMissEntries = 2,
+        nReleaseEntries = 1,
+        nProbeEntries = 2,
+        nPrefetchEntries = 2,
+        hasPrefetch = false
+      ),
+      dcacheParametersOpt = Some(DCacheParameters(
+        nSets = 64, // 32KB DCache
+        nWays = 8,
+        tagECC = Some("secded"),
+        dataECC = Some("secded"),
+        replacer = Some("setplru"),
+        nMissEntries = 4,
+        nProbeEntries = 4,
+        nReleaseEntries = 8,
+      )),
+      EnableBPD = false, // disable TAGE
+      EnableLoop = false,
+      itlbParameters = TLBParameters(
+        name = "itlb",
+        fetchi = true,
+        useDmode = false,
+        sameCycle = false,
+        missSameCycle = true,
+        normalReplacer = Some("plru"),
+        superReplacer = Some("plru"),
+        normalNWays = 4,
+        normalNSets = 1,
+        superNWays = 2,
+        shouldBlock = true
+      ),
+      ldtlbParameters = TLBParameters(
+        name = "ldtlb",
+        normalNSets = 16, // 6when da or sa
+        normalNWays = 1, // when fa or sa
+        normalAssociative = "sa",
+        normalReplacer = Some("setplru"),
+        superNWays = 4,
+        normalAsVictim = true,
+        partialStaticPMP = true,
+        outReplace = false
+      ),
+      sttlbParameters = TLBParameters(
+        name = "sttlb",
+        normalNSets = 16, // when da or sa
+        normalNWays = 1, // when fa or sa
+        normalAssociative = "sa",
+        normalReplacer = Some("setplru"),
+        normalAsVictim = true,
+        superNWays = 4,
+        partialStaticPMP = true,
+        outReplace = false
+      ),
+      btlbParameters = TLBParameters(
+        name = "btlb",
+        normalNSets = 1,
+        normalNWays = 8,
+        superNWays = 2
+      ),
+      l2tlbParameters = L2TLBParameters(
+        l1Size = 4,
+        l2nSets = 4,
+        l2nWays = 4,
+        l3nSets = 4,
+        l3nWays = 8,
+        spSize = 2,
+      ),
+      L2CacheParamsOpt = None // remove L2 Cache
+
+    )
+  })
+)
 
 // Synthesizable minimal XiangShan
 // * It is still an out-of-order, super-scalaer arch
