@@ -210,7 +210,7 @@ object TopMain extends App with HasRocketChipStageUtils {
     val soc = DisableMonitors(p => LazyModule(new XSTop()(p)))(config)
     XiangShanStage.execute(firrtlOpts, Seq(
       ChiselGeneratorAnnotation(() => {
-        soc.core_with_l2.head.module
+        soc.core_with_l2.head.core.module
       })
     ))
     ElaborationArtefacts.files.foreach{ case (extension, contents) =>

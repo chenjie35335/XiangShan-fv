@@ -243,6 +243,7 @@ class MinimalConfig(n: Int = 1) extends Config(
         )),
         EnableBPD = false, // disable TAGE
         EnableLoop = false,
+        EnableGHistDiff = false,
         itlbParameters = TLBParameters(
           name = "itlb",
           fetchi = true,

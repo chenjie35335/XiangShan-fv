@@ -366,7 +366,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
 
   ctrlBlock.perfinfo.perfEventsEu0 := exuBlocks(0).getPerf.dropRight(outer.exuBlocks(0).scheduler.numRs)
   ctrlBlock.perfinfo.perfEventsEu1 := exuBlocks(1).getPerf.dropRight(outer.exuBlocks(1).scheduler.numRs)
-  memBlock.io.perfEventsPTW  := ptw.getPerf
+  memBlock.io.perfEventsPTW  := DontCare//ptw.getPerf
   ctrlBlock.perfinfo.perfEventsRs  := outer.exuBlocks.flatMap(b => b.module.getPerf.takeRight(b.scheduler.numRs))
 
   csrioIn.hartId <> io.hartId
@@ -426,30 +426,30 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   io.l2_pf_enable := csrioIn.customCtrl.l2_pf_enable
 
   // Modules are reset one by one
-  val resetTree = ResetGenNode(
-    Seq(
-      ModuleNode(memBlock), ModuleNode(dtlbRepeater1),
-      ResetGenNode(Seq(
-        ModuleNode(itlbRepeater2),
-        ModuleNode(ptw),
-        ModuleNode(dtlbRepeater2),
-        ModuleNode(ptw_to_l2_buffer),
-      )),
-      ResetGenNode(Seq(
-        ModuleNode(exuBlocks.head),
-        ResetGenNode(
-          exuBlocks.tail.map(m => ModuleNode(m)) :+ ModuleNode(outer.wbArbiter.module) :+ ModuleNode(wb2Ctrl)
-        ),
-        ResetGenNode(Seq(
-          ModuleNode(ctrlBlock),
-          ResetGenNode(Seq(
-            ModuleNode(frontend), ModuleNode(itlbRepeater1)
-          ))
-        ))
-      ))
-    )
-  )
+  // val resetTree = ResetGenNode(
+  //   Seq(
+  //     ModuleNode(memBlock), ModuleNode(dtlbRepeater1),
+  //     ResetGenNode(Seq(
+  //       ModuleNode(itlbRepeater2),
+  //       ModuleNode(ptw),
+  //       ModuleNode(dtlbRepeater2),
+  //       ModuleNode(ptw_to_l2_buffer),
+  //     )),
+  //     ResetGenNode(Seq(
+  //       ModuleNode(exuBlocks.head),
+  //       ResetGenNode(
+  //         exuBlocks.tail.map(m => ModuleNode(m)) :+ ModuleNode(outer.wbArbiter.module) :+ ModuleNode(wb2Ctrl)
+  //       ),
+  //       ResetGenNode(Seq(
+  //         ModuleNode(ctrlBlock),
+  //         ResetGenNode(Seq(
+  //           ModuleNode(frontend), ModuleNode(itlbRepeater1)
+  //         ))
+  //       ))
+  //     ))
+  //   )
+  // )
 
-  ResetGen(resetTree, reset, !debugOpts.FPGAPlatform)
+  // ResetGen(resetTree, reset, !debugOpts.FPGAPlatform)
 
 }

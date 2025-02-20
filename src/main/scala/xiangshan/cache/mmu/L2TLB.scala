@@ -450,7 +450,7 @@ class PTEHelper() extends Module {
       pg_base(0)  := satp << 12
       pte_addr(0) := pg_base(0) + VPNi(vpn, 0) << 3
       pte_tp(0) := DontCare
-      pte := pte_tp(0)
+      pte := pte_tp(0).asUInt
 
       when(!pte_tp(0).v) {
         ret := 1.U
@@ -465,7 +465,7 @@ class PTEHelper() extends Module {
       when(!end(0)) {
         pte_addr(1) := pg_base(1) + VPNi(vpn, 1) << 3
         pte_tp(1) := DontCare
-        pte := pte_tp(1)
+        pte := pte_tp(1).asUInt
 
         when(!pte_tp(1).v) {
           ret := 1.U
@@ -479,7 +479,7 @@ class PTEHelper() extends Module {
         when(!end(1)) {
           pte_addr(2) := pg_base(2) + VPNi(vpn, 2) << 3
           pte_tp(2) := DontCare
-          pte := pte_tp(2)
+          pte := pte_tp(2).asUInt
 
           when(!pte_tp(2).v) {
             ret := 1.U
@@ -495,6 +495,8 @@ class PTEHelper() extends Module {
   }
 
   val pf_reg = RegInit(0.U(8.W))
+  level := 0.U
+  pte := 0.U
   when(enable) {
     pf_reg := pte_helper(satp, vpn, pte, level)
   }
@@ -503,7 +505,19 @@ class PTEHelper() extends Module {
 
 }
 
-class FakePTW()(implicit p: Parameters) extends XSModule with HasPtwConst {
+class FakePTW()(implicit p: Parameters) extends LazyModule with HasPtwConst {
+  val node = TLClientNode(Seq(TLMasterPortParameters.v1(
+    clients = Seq(TLMasterParameters.v1(
+      "ptw",
+      sourceId = IdRange(0, MemReqWidth)
+    )),
+    requestFields = Seq(PreferCacheField())
+  )))
+
+  lazy val module = new FakePTWImp(this)
+}
+
+class FakePTWImp(outer: FakePTW)(implicit p: Parameters) extends LazyModuleImp(outer) with HasXSParameter with HasPtwConst {
   val io = IO(new PtwIO)
 
   for (i <- 0 until PtwWidth) {
@@ -531,17 +545,19 @@ class FakePTW()(implicit p: Parameters) extends XSModule with HasPtwConst {
 
 class PTWWrapper()(implicit p: Parameters) extends LazyModule with HasXSParameter {
   val useSoftPTW = coreParams.softPTW
-  val node = if (!useSoftPTW) TLIdentityNode() else null
+  val node = TLIdentityNode()
   val ptw = if (!useSoftPTW) LazyModule(new PTW()) else null
+  val fake_ptw = if(useSoftPTW) LazyModule(new FakePTW()) else null
   if (!useSoftPTW) {
     node := ptw.node
+  } else {
+    node := fake_ptw.node
   }
 
   lazy val module = new LazyModuleImp(this) with HasPerfEvents {
     val io = IO(new PtwIO)
     val perfEvents = if (useSoftPTW) {
-      val fake_ptw = Module(new FakePTW())
-      io <> fake_ptw.io
+      io <> fake_ptw.module.io
       Seq()
     }
     else {

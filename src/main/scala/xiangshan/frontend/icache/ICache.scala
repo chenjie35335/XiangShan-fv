@@ -460,6 +460,64 @@ class ICacheIO(implicit p: Parameters) extends ICacheBundle
   val csr_parity_enable = Input(Bool())
 }
 
+class Fake_ICache()(implicit p: Parameters) extends LazyModule with HasICacheParameters{
+  val clientParameters = TLMasterPortParameters.v1(
+    Seq(TLMasterParameters.v1(
+      name = "icache",
+      sourceId = IdRange(0, cacheParams.nMissEntries + cacheParams.nReleaseEntries + cacheParams.nPrefetchEntries),
+      supportsProbe = TransferSizes(blockBytes),
+      supportsHint = TransferSizes(blockBytes)
+    )),
+    requestFields = cacheParams.reqFields,
+    echoFields = cacheParams.echoFields
+  )
+  val clientNode = TLClientNode(Seq(clientParameters))
+
+  lazy val module = new Fake_ICacheImp(this)
+}
+//也就是说这个ICache需要完成的任务是
+//1、 接受Ftq的命令，进行插接，然后首先将地址转发给tlb
+//2、 接受tlb发回的物理地址信息，注意，我们可以认为这里tlb永远命中，使用assume确定
+//3、 将发挥的物理地址交给PMP进行验证，然后传回的内容不作处理
+//4、 L1cache和csr的交互暂时不管
+//5、 这里面还有一个toIFU，用来表示
+class Fake_ICacheImp(outer: Fake_ICache) extends LazyModuleImp(outer) with HasICacheParameters with HasPerfEvents{
+  val io = IO(new ICacheIO)
+  
+  io := DontCare
+  
+  io.toIFU := true.B
+  
+  io.itlb := DontCare
+  io.itlb.map(tlb => tlb.req.valid := false.B)
+
+  io.pmp.map(_.req.valid := false.B)
+  
+  io.fetch.req.ready := true.B
+
+  io.fetch.resp.map(_.valid := true.B)
+  io.fetch.resp(0).bits.sramData            := DontCare
+  io.fetch.resp(0).bits.registerData        := DontCare
+  io.fetch.resp(0).bits.select              := true.B
+  io.fetch.resp(0).bits.vaddr               := io.fetch.req.bits.pcMemRead(0).startAddr
+  io.fetch.resp(0).bits.paddr               := io.fetch.req.bits.pcMemRead(0).startAddr
+  io.fetch.resp(0).bits.tlbExcp.mmio        := false.B
+  io.fetch.resp(0).bits.tlbExcp.pageFault   := false.B
+  io.fetch.resp(0).bits.tlbExcp.accessFault := false.B
+
+  io.fetch.resp(1).bits.sramData            := DontCare
+  io.fetch.resp(1).bits.registerData        := DontCare
+  io.fetch.resp(1).bits.select              := true.B
+  io.fetch.resp(1).bits.vaddr               := io.fetch.req.bits.pcMemRead(1).startAddr
+  io.fetch.resp(1).bits.paddr               := io.fetch.req.bits.pcMemRead(1).startAddr
+  io.fetch.resp(1).bits.tlbExcp.mmio        := false.B
+  io.fetch.resp(1).bits.tlbExcp.pageFault   := false.B
+  io.fetch.resp(1).bits.tlbExcp.accessFault := false.B
+
+  val perfEvents = Seq()
+  generatePerfEvent()
+}
+
 class ICache()(implicit p: Parameters) extends LazyModule with HasICacheParameters {
 
   val clientParameters = TLMasterPortParameters.v1(

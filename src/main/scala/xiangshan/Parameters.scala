@@ -65,7 +65,7 @@ case class XSCoreParameters
   EnableFauFTB: Boolean = true,
   UbtbGHRLength: Int = 4,
   // HistoryLength: Int = 512,
-  EnableGHistDiff: Boolean = true,
+  EnableGHistDiff: Boolean = false,
   UbtbSize: Int = 256,
   FtbSize: Int = 2048,
   RasSize: Int = 32,
@@ -237,7 +237,7 @@ case class XSCoreParameters
   )),
   L2NBanks: Int = 1,
   usePTWRepeater: Boolean = false,
-  softPTW: Boolean = false // dpi-c debug only
+  softPTW: Boolean = true //dpi-c debug only
 ){
   val allHistLens = SCHistLens ++ ITTageTableInfos.map(_._2) ++ TageTableInfos.map(_._2) :+ UbtbGHRLength
   val HistoryLength = allHistLens.max + numBr * FtqSize + 9 // 256 for the predictor configs now
@@ -261,7 +261,7 @@ case class DebugOptions
 (
   FPGAPlatform: Boolean = false,
   EnableDifftest: Boolean = false,
-  AlwaysBasicDiff: Boolean = true,
+  AlwaysBasicDiff: Boolean = false,
   EnableDebug: Boolean = false,
   EnablePerfDebug: Boolean = true,
   UseDRAMSim: Boolean = false

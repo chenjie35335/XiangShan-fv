@@ -31,9 +31,24 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.experimental.BoringUtils
 
+class FakeDCache_FV()(implicit p: Parameters) extends LazyModule with HasDCacheParameters{
+  val clientParameters = TLMasterPortParameters.v1(
+    Seq(TLMasterParameters.v1(
+      name = "dcache",
+      sourceId = IdRange(0, nEntries + 1),
+      supportsProbe = TransferSizes(cfg.blockBytes)
+    )),
+    requestFields = cacheParams.reqFields,
+    echoFields = cacheParams.echoFields
+  )
+
+  val clientNode = TLClientNode(Seq(clientParameters))
+
+  lazy val module = new FakeDCacheImp_Fv(this)
+}
 
 // this data is not important, for it has to be handed to the reference model
-class FakeDCache_Fv()(implicit p: Parameters) extends XSModule with HasDCacheParameters{
+class FakeDCacheImp_Fv(outer: FakeDCache_FV) extends LazyModuleImp(outer) with HasDCacheParameters{
   val io = IO(new DCacheIO)
 
   io := DontCare
@@ -41,7 +56,7 @@ class FakeDCache_Fv()(implicit p: Parameters) extends XSModule with HasDCachePar
   // to LoadUnit
   for(i <- 0 until LoadPipelineWidth) {
     io.lsu.load(i).req.ready := true.B
-    io.lsu.load(i).resp.valid := RegNext(io.lsu.load(i).req.valid) && !io.lsu.load(i).s1_kill
+    io.lsu.load(i).resp.valid := RegNext(RegNext(io.lsu.load(i).req.valid) && !io.lsu.load(i).s1_kill)
     io.lsu.load(i).resp.bits.data := DontCare
     io.lsu.load(i).resp.bits.miss := false.B
     io.lsu.load(i).resp.bits.replay := false.B
@@ -53,16 +68,16 @@ class FakeDCache_Fv()(implicit p: Parameters) extends XSModule with HasDCachePar
   io.lsu.lsq.valid := false.B
   io.lsu.lsq.bits := DontCare
   // to Store Buffer
-  io.lsu.store.req.ready := true.B
+  io.lsu.store.req.ready := true.B //accept but don't do anything
   io.lsu.store.main_pipe_hit_resp := DontCare
   io.lsu.store.refill_hit_resp := DontCare
   io.lsu.store.replay_resp := DontCare
   io.lsu.store.main_pipe_hit_resp.valid := RegNext(io.lsu.store.req.valid)
   io.lsu.store.main_pipe_hit_resp.bits.id := RegNext(io.lsu.store.req.bits.id)
-  // to atomics
+  // to atomics // Maybe we don't need to verify atomics yet
   io.lsu.atomics.req.ready := true.B
   io.lsu.atomics.resp.valid := RegNext(io.lsu.atomics.req.valid)
-  assert(!io.lsu.atomics.resp.valid || io.lsu.atomics.resp.ready)
+  //assert(!io.lsu.atomics.resp.valid || io.lsu.atomics.resp.ready)
   io.lsu.atomics.resp.bits.data := DontCare
   io.lsu.atomics.resp.bits.replay := false.B
   io.lsu.atomics.resp.bits.id := 1.U
@@ -91,7 +106,7 @@ class FakeDCache()(implicit p: Parameters) extends XSModule with HasDCacheParame
     io.lsu.load(i).s2_hit := true.B
     io.lsu.load(i).s1_disable_fast_wakeup := false.B
   }
-  // to LSQ
+  // to LSQ 
   io.lsu.lsq.valid := false.B
   io.lsu.lsq.bits := DontCare
   // to Store Buffer

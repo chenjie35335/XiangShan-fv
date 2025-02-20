@@ -29,7 +29,7 @@ import xiangshan.frontend.icache._
 class Frontend()(implicit p: Parameters) extends LazyModule with HasXSParameter{
 
   val instrUncache  = LazyModule(new InstrUncache())
-  val icache        = LazyModule(new ICache())
+  val icache        = LazyModule(new Fake_ICache())
 
   lazy val module = new FrontendImp(this)
 }
@@ -181,7 +181,7 @@ class FrontendImp (outer: Frontend) extends LazyModuleImp(outer)
   pfevent.io.distribute_csr := io.csrCtrl.distribute_csr
   val csrevents = pfevent.io.hpmevent.take(8)
 
-  val perfFromUnits = Seq(ifu, ibuffer, icache, ftq, bpu).flatMap(_.getPerfEvents)
+  val perfFromUnits = Seq(ifu, ibuffer, ftq, icache, bpu).flatMap(_.getPerfEvents)
   val perfFromIO    = Seq()
   val perfBlock     = Seq()
   // let index = 0 be no event

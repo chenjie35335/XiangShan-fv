@@ -68,6 +68,9 @@ TIME_CMD = time -a -o $(TIMELOG)
 help:
 	mill -i XiangShan.test.runMain $(SIMTOP) --help
 
+formal:$(SCALA_FILE)
+	mill XiangShan.test.testOnly formal.XiangshanFormalSpec
+
 $(TOP_V): $(SCALA_FILE)
 	mkdir -p $(@D)
 	mill -i XiangShan.runMain $(FPGATOP) --target-dir $(@D)                      \
@@ -76,13 +79,13 @@ $(TOP_V): $(SCALA_FILE)
 		--gen-mem-verilog full --num-cores $(NUM_CORES)             \
 		$(RELEASE_ARGS)
 	sed -i -e 's/_\(aw\|ar\|w\|r\|b\)_\(\|bits_\)/_\1/g' $@
-	@git log -n 1 >> .__head__
-	@git diff >> .__diff__
-	@sed -i 's/^/\/\// ' .__head__
-	@sed -i 's/^/\/\//' .__diff__
-	@cat .__head__ .__diff__ $@ > .__out__
-	@mv .__out__ $@
-	@rm .__head__ .__diff__
+	# @git log -n 1 >> .__head__
+	# @git diff >> .__diff__
+	# @sed -i 's/^/\/\// ' .__head__
+	# @sed -i 's/^/\/\//' .__diff__
+	# @cat .__head__ .__diff__ $@ > .__out__
+	# @mv .__out__ $@
+	# @rm .__head__ .__diff__
 
 verilog: $(TOP_V)
 

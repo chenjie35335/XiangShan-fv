@@ -14,6 +14,7 @@ import system.HasSoCParameter
 import top.BusPerfMonitor
 import utils.{TLClientsMerger, TLEdgeBuffer, IntBuffer}
 
+
 class L1BusErrorUnitInfo(implicit val p: Parameters) extends Bundle with HasSoCParameter {
   val ecc_error = Valid(UInt(soc.PAddrBits.W))
 }
@@ -77,7 +78,7 @@ class XSTile()(implicit p: Parameters) extends LazyModule
   with HasXSParameter
   with HasSoCParameter
 {
-  private val core = LazyModule(new XSCore())
+  lazy val core = LazyModule(new XSCore())
   private val misc = LazyModule(new XSTileMisc())
   private val l2cache = coreParams.L2CacheParamsOpt.map(l2param =>
     LazyModule(new HuanCun()(new Config((_, _, _) => {
@@ -122,14 +123,15 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     l1i_to_l2_buf_node :=
     core.frontend.icache.clientNode
 
-  val ptw_to_l2_buffers = if (!coreParams.softPTW) {
-    val (buffers, buf_node) = chainBuffer(5, "ptw_to_l2_buffer")
+  val (buffers, buf_node) = chainBuffer(5, "ptw_to_l2_buffer")
     misc.busPMU :=
       TLLogger(s"L2_PTW_${coreParams.HartId}", !debugOpts.FPGAPlatform) :=
       buf_node :=
       core.ptw_to_l2_buffer.node
-    buffers
-  } else Seq()
+
+  // val ptw_to_l2_buffers = if (!coreParams.softPTW) {
+    
+  // } else Seq()
 
   l2cache match {
     case Some(l2) =>
@@ -177,13 +179,13 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     //             |
     //             v
     // reset ----> OR_SYNC --> {Misc, L2 Cache, Cores}
-    val resetChain = Seq(
-      Seq(misc.module, core.module) ++
-        l1i_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
-        ptw_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
-        l1d_to_l2_bufferOpt.map(_.module) ++
-        l2cache.map(_.module)
-    )
-    ResetGen(resetChain, reset, !debugOpts.FPGAPlatform)
+    // val resetChain = Seq(
+    //   Seq(misc.module, core.module) ++
+    //     l1i_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
+    //     ptw_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
+    //     l1d_to_l2_bufferOpt.map(_.module) ++
+    //     l2cache.map(_.module)
+    // )
+    // ResetGen(resetChain, reset, !debugOpts.FPGAPlatform)
   }
 }

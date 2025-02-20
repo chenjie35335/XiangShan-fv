@@ -882,21 +882,25 @@ class AMOHelper() extends ExtModule {
 }
 
 class DCacheWrapper()(implicit p: Parameters) extends LazyModule with HasXSParameter {
-
-  val useDcache = coreParams.dcacheParametersOpt.nonEmpty
-  val clientNode = if (useDcache) TLIdentityNode() else null
+  val enableFormal = true
+  val useDcache = coreParams.dcacheParametersOpt.nonEmpty && !enableFormal
+  val clientNode = TLIdentityNode()//if (useDcache) TLIdentityNode() else null
   val dcache = if (useDcache) LazyModule(new DCache()) else null
+  val fakeDcache = if (!useDcache) LazyModule(new FakeDCache_FV()) else null
   if (useDcache) {
     clientNode := dcache.clientNode
+  } else {
+    clientNode := fakeDcache.clientNode
   }
 
   lazy val module = new LazyModuleImp(this) with HasPerfEvents {
     val io = IO(new DCacheIO)
-    val enableFormal = true
-    val perfEvents = if (enableFormal) {
+
+    
+
+    val perfEvents = if (!useDcache) {
       // a fake dcache which uses dpi-c to access memory, only for debug usage!
-      val fake_dcache = Module(new FakeDCache_Fv())
-      io <> fake_dcache.io
+      io <> fakeDcache.module.io
       Seq()
     }
     else {

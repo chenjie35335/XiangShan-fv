@@ -31,7 +31,7 @@ trait HasBPUConst extends HasXSParameter {
   val MaxBasicBlockSize = 32
   val LHistoryLength = 32
   // val numBr = 2
-  val useBPD = true
+  val useBPD = false
   val useLHist = true
   val numBrSlot = numBr-1
   val totalSlot = numBrSlot + 1
@@ -201,10 +201,13 @@ abstract class BasePredictor(implicit p: Parameters) extends XSModule
   def getFoldedHistoryInfo: Option[Set[FoldedHistoryInfo]] = None
 }
 
-class FakePredictor(implicit p: Parameters) extends BasePredictor {
+class FakePredictor(implicit p: Parameters) extends BasePredictor with HasBPUConst with HasPerfEvents{
   io.in.ready                 := true.B
   io.out.last_stage_meta      := 0.U
   io.out := io.in.bits.resp_in(0)
+
+  override val perfEvents = Seq()
+  generatePerfEvent()
 }
 
 class BpuToFtqIO(implicit p: Parameters) extends XSBundle {
@@ -217,6 +220,7 @@ class PredictorIO(implicit p: Parameters) extends XSBundle {
   val ctrl = Input(new BPUCtrl)
 }
 
+ 
 @chiselName
 class Predictor(implicit p: Parameters) extends XSModule with HasBPUConst with HasPerfEvents with HasCircularQueuePtrHelper {
   val io = IO(new PredictorIO)
@@ -486,6 +490,7 @@ class Predictor(implicit p: Parameters) extends XSModule with HasBPUConst with H
   s2_ahead_fh_ob_src_dup.zip(s2_ghist_ptr_dup).map{ case (src, ptr) => src.read(ghv, ptr)}
 
   if (EnableGHistDiff) {
+    println("GHistDiff open")
     val s2_predicted_ghist = WireInit(getHist(s2_predicted_ghist_ptr_dup(0)).asTypeOf(Vec(HistoryLength, Bool())))
     for (i <- 0 until numBr) {
       when (resp.s2.shouldShiftVec(0)(i)) {
@@ -769,6 +774,6 @@ class Predictor(implicit p: Parameters) extends XSModule with HasBPUConst with H
   XSPerfAccumulate("s3_redirect", s3_redirect_dup(0))
   XSPerfAccumulate("s1_not_valid", !s1_valid_dup(0))
 
-  val perfEvents = predictors.asInstanceOf[Composer].getPerfEvents
+  val perfEvents = predictors.getPerfEvents
   generatePerfEvent()
 }
