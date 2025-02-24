@@ -31,6 +31,7 @@ import system.SoCParamsKey
 import huancun._
 import huancun.debug._
 import xiangshan.mem.prefetch.{PrefetcherParams, SMSParams}
+import rvspeccore.core.RVConfig
 
 import scala.math.min
 
@@ -264,7 +265,14 @@ case class DebugOptions
   AlwaysBasicDiff: Boolean = false,
   EnableDebug: Boolean = false,
   EnablePerfDebug: Boolean = true,
-  UseDRAMSim: Boolean = false
+  UseDRAMSim: Boolean = false,
+  EnableFormal: Boolean = false,
+  rvConfig: RVConfig = RVConfig(
+    XLEN = 64,
+    extensions = "M",
+    fakeExtensions = "",
+    functions = Seq()
+  )
 )
 
 trait HasXSParameter {

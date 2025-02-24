@@ -123,6 +123,10 @@ object difftest extends XSModule with SbtModule {
 
 object fudian extends XSModule with SbtModule
 
+object riscv_spec_core extends XSModule with SbtModule {
+  override def millSourcePath = os.pwd / "riscv-spec-core"
+}
+
 // extends this trait to use XiangShan in other projects
 trait CommonXiangShan extends XSModule with SbtModule { m =>
 
@@ -131,6 +135,7 @@ trait CommonXiangShan extends XSModule with SbtModule { m =>
   def difftestModule: PublishModule
   def huancunModule: PublishModule
   def fudianModule: PublishModule
+  def RiscvModule:  PublishModule
 
   override def millSourcePath = os.pwd
 
@@ -142,7 +147,8 @@ trait CommonXiangShan extends XSModule with SbtModule { m =>
     rocketModule,
     difftestModule,
     huancunModule,
-    fudianModule
+    fudianModule,
+    RiscvModule
   )
 
   object test extends SbtModuleTests with TestModule.ScalaTest {
@@ -162,4 +168,5 @@ object XiangShan extends CommonXiangShan {
   override def difftestModule = difftest
   override def huancunModule = huancun
   override def fudianModule = fudian
+  override def RiscvModule = riscv_spec_core
 }

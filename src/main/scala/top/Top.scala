@@ -100,10 +100,11 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
   } else {
     core_with_l2.map(_ => BundleBridgeSource(() => Reset()))
   }
-
-//  core_rst_nodes.zip(core_with_l2.map(_.core_reset_sink)).foreach({
-//    case (source, sink) =>  sink := source
-//  })
+  if(!debugOpts.EnableFormal) {
+    core_rst_nodes.zip(core_with_l2.map(_.core_reset_sink)).foreach({
+      case (source, sink) => sink := source
+    })
+  }
 
   l3cacheOpt match {
     case Some(l3) =>

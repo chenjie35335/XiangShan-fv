@@ -25,6 +25,7 @@ import utils._
 import xiangshan._
 import xiangshan.backend.exu.ExuConfig
 import xiangshan.frontend.FtqPtr
+import rvspeccore.checker._
 
 class RobPtr(implicit p: Parameters) extends CircularQueuePtr[RobPtr](
   p => p(XSCoreParamsKey).RobSize
@@ -1006,6 +1007,34 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     val idx = deqPtrVec(i).value
     wdata(i) := debug_exuData(idx)
     wpc(i) := SignExt(commitDebugUop(i).cf.pc, XLEN)
+  }
+
+  if(env.EnableFormal) {
+    val checker = Module(new CheckerWithWB(checkMem = false)(env.rvConfig))
+    val index = WireInit(0.U)
+    index := DontCare
+
+    val SelUop = MuxCase(0.U.asTypeOf(new MicroOp()), Array(
+      (index === 0.U) -> commitDebugUop(0),
+      (index === 1.U) -> commitDebugUop(1),
+    ))
+
+    checker.io.instCommit.valid := RegNext(RegNext(RegNext(io.commits.commitValid(index) && io.commits.isCommit)))
+    checker.io.instCommit.pc    := RegNext(RegNext(RegNext(SignExt(SelUop.cf.pc, XLEN))))
+    checker.io.instCommit.inst  := RegNext(RegNext(RegNext(SelUop.cf.instr)))
+    checker.io.wb.valid         := RegNext(RegNext(RegNext(io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U)))
+    checker.io.wb.dest          := RegNext(RegNext(RegNext(io.commits.info(index).ldest)))
+    checker.io.wb.r1Addr        := RegNext(RegNext(RegNext(SelUop.ctrl.lsrc(0))))
+    checker.io.wb.r2Addr        := RegNext(RegNext(RegNext(SelUop.ctrl.lsrc(1))))
+    checker.io.wb.data          := RegNext(RegNext(RegNext(debug_exuData(deqPtrVec(index).value))))
+    checker.io.wb.r1Data        := 0.U // this two has to be move from pipeline
+    checker.io.wb.r2Data        := 0.U
+
+
+    ConnectCheckerWb.setChecker(checker)(64,env.rvConfig)
+
+    val mem = ConnectCheckerWb.makeMemSource()(64)
+    val csr = ConnectCheckerWb.makeCSRSource()(64, env.rvConfig)
   }
 
   if (env.EnableDifftest) {

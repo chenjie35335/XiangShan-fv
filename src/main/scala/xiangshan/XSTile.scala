@@ -93,7 +93,10 @@ class XSTile()(implicit p: Parameters) extends LazyModule
   val plic_int_sink = IntIdentityNode()
   val debug_int_sink = IntIdentityNode()
   val beu_int_source = IntIdentityNode()
-  //val core_reset_sink = BundleBridgeSink(Some(() => Reset()))
+  if(!env.EnableFormal) {
+    val core_reset_sink = BundleBridgeSink(Some(() => Reset()))
+    val core_soft_rst = core_reset_sink.in.head._1
+  }
 
   core.clint_int_sink :*= IntBuffer() :*= clint_int_sink
   core.plic_int_sink :*= IntBuffer() :*= plic_int_sink
@@ -123,15 +126,14 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     l1i_to_l2_buf_node :=
     core.frontend.icache.clientNode
 
-  val (buffers, buf_node) = chainBuffer(5, "ptw_to_l2_buffer")
-    misc.busPMU :=
-      TLLogger(s"L2_PTW_${coreParams.HartId}", !debugOpts.FPGAPlatform) :=
-      buf_node :=
-      core.ptw_to_l2_buffer.node
-
-  // val ptw_to_l2_buffers = if (!coreParams.softPTW) {
-    
-  // } else Seq()
+   val ptw_to_l2_buffers = if (!coreParams.softPTW) {
+     val (buffers, buf_node) = chainBuffer(5, "ptw_to_l2_buffer")
+     misc.busPMU :=
+       TLLogger(s"L2_PTW_${coreParams.HartId}", !debugOpts.FPGAPlatform) :=
+       buf_node :=
+       core.ptw_to_l2_buffer.node
+     buffers
+   } else Seq()
 
   l2cache match {
     case Some(l2) =>
@@ -153,8 +155,6 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     })
 
     dontTouch(io.hartId)
-
-    //val core_soft_rst = core_reset_sink.in.head._1
 
     core.module.io.hartId := io.hartId
     io.cpu_halt := core.module.io.cpu_halt
@@ -179,13 +179,13 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     //             |
     //             v
     // reset ----> OR_SYNC --> {Misc, L2 Cache, Cores}
-    // val resetChain = Seq(
-    //   Seq(misc.module, core.module) ++
-    //     l1i_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
-    //     ptw_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
-    //     l1d_to_l2_bufferOpt.map(_.module) ++
-    //     l2cache.map(_.module)
-    // )
-    // ResetGen(resetChain, reset, !debugOpts.FPGAPlatform)
+     val resetChain = Seq(
+       Seq(misc.module, core.module) ++
+         l1i_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
+         ptw_to_l2_buffers.map(_.module.asInstanceOf[MultiIOModule]) ++
+         l1d_to_l2_bufferOpt.map(_.module) ++
+         l2cache.map(_.module)
+     )
+     ResetGen(resetChain, reset, !debugOpts.FPGAPlatform)
   }
 }
