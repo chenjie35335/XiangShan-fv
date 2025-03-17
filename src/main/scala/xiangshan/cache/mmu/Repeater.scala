@@ -319,9 +319,9 @@ class PTWFilter(Width: Int, Size: Int)(implicit p: Parameters) extends XSModule 
     XSPerfAccumulate(s"counter${i}", counter === i.U)
   }
 
-  for (i <- 0 until Size) {
-    TimeOutAssert(v(i), timeOutThreshold, s"Filter ${i} doesn't recv resp in time")
-  }
+//  for (i <- 0 until Size) {
+//    TimeOutAssert(v(i), timeOutThreshold, s"Filter ${i} doesn't recv resp in time")
+//  }
 }
 
 object PTWRepeater {

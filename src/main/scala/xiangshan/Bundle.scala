@@ -109,7 +109,7 @@ class CfiUpdateInfo(implicit p: Parameters) extends XSBundle with HasBPUParamete
 // Dequeue DecodeWidth insts from Ibuffer
 class CtrlFlow(implicit p: Parameters) extends XSBundle {
   val instr = UInt(32.W)
-  val pc = UInt(VAddrBits.W)
+  val pc = UInt(VAddrBits.W) //这个pc是虚拟地址，所以不用管他
   val foldpc = UInt(MemPredPCWidth.W)
   val exceptionVec = ExceptionVec()
   val trigger = new TriggerCf
@@ -226,6 +226,7 @@ class MicroOp(implicit p: Parameters) extends CfCtrl {
   val sqIdx = new SqPtr
   val eliminatedMove = Bool()
   val debugInfo = new PerfDebugInfo
+  val SrcValue = Vec(3, UInt(XLEN.W))
   def needRfRPort(index: Int, isFp: Boolean, ignoreState: Boolean = true) : Bool = {
     val stateReady = srcState(index) === SrcState.rdy || ignoreState.B
     val readReg = if (isFp) {
@@ -327,6 +328,7 @@ class ExuOutput(implicit p: Parameters) extends XSBundle {
   val redirectValid = Bool()
   val redirect = new Redirect
   val debug = new DebugBundle
+  val src = Vec(3, UInt(XLEN.W))
 }
 
 class ExternalInterruptIO(implicit p: Parameters) extends XSBundle {
@@ -414,9 +416,9 @@ class MemRSFeedbackIO(implicit p: Parameters) extends XSBundle {
 class FrontendToCtrlIO(implicit p: Parameters) extends XSBundle {
   // to backend end
   val cfVec = Vec(DecodeWidth, DecoupledIO(new CtrlFlow))
-  val fromFtq = new FtqToCtrlIO
+  val fromFtq = new FtqToCtrlIO  // 这个是难点， 这个是前端和后端唯一耦合的地方
   // from backend
-  val toFtq = Flipped(new CtrlToFtqIO)
+  val toFtq = Flipped(new CtrlToFtqIO) // 这部分是redirect, 因此可以不予考虑
 }
 
 class SatpStruct extends Bundle {

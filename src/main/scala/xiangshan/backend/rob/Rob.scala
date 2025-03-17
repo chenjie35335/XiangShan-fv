@@ -19,6 +19,7 @@ package xiangshan.backend.rob
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.BoringUtils
 import difftest._
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
 import utils._
@@ -323,6 +324,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   // data for debug
   // Warn: debug_* prefix should not exist in generated verilog.
   val debug_microOp = Mem(RobSize, new MicroOp)
+  val debug_exuSrc  = Reg(Vec(RobSize, Vec(3, UInt(XLEN.W))))
   val debug_exuData = Reg(Vec(RobSize, UInt(XLEN.W)))//for debug
   val debug_exuDebug = Reg(Vec(RobSize, new DebugBundle))//for debug
 
@@ -455,6 +457,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       val wbIdx = wb.bits.uop.robIdx.value
       debug_exuData(wbIdx) := wb.bits.data
       debug_exuDebug(wbIdx) := wb.bits.debug
+      debug_exuSrc(wbIdx) := wb.bits.src
       debug_microOp(wbIdx).debugInfo.enqRsTime := wb.bits.uop.debugInfo.enqRsTime
       debug_microOp(wbIdx).debugInfo.selectTime := wb.bits.uop.debugInfo.selectTime
       debug_microOp(wbIdx).debugInfo.issueTime := wb.bits.uop.debugInfo.issueTime
@@ -1012,31 +1015,39 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   if(env.EnableFormal) {
     val checker = Module(new CheckerWithWB(checkMem = false)(env.rvConfig))
     val index = WireInit(0.U)
-    index := DontCare
+    BoringUtils.addSink(index, "formalIndex")
 
-    val SelUop = MuxCase(0.U.asTypeOf(new MicroOp()), Array(
-      (index === 0.U) -> commitDebugUop(0),
-      (index === 1.U) -> commitDebugUop(1),
-    ))
-
+    val selectSeq = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugUop(i))
+    }
+    val SelUop = MuxCase(0.U.asTypeOf(new MicroOp()), selectSeq)
+  //首先我们需要考虑的问题是npc怎么弄的问题
+    // 当然分为两个部分： 第一个是预译码的时候，然后是后端提交的时候，这会引起nextpc的变化，因此需要考虑这两个结构来获取npc
+    // ftq中存储的信息大部分是和分支预测相关的， 如果想要转换成nextpc将会非常复杂，感觉这里还是说要在rob这里和流水线那里就把nextpc
+    // 保留在microOp当中
     checker.io.instCommit.valid := RegNext(RegNext(RegNext(io.commits.commitValid(index) && io.commits.isCommit)))
     checker.io.instCommit.pc    := RegNext(RegNext(RegNext(SignExt(SelUop.cf.pc, XLEN))))
+    checker.io.instCommit.npc   := 0.U
     checker.io.instCommit.inst  := RegNext(RegNext(RegNext(SelUop.cf.instr)))
     checker.io.wb.valid         := RegNext(RegNext(RegNext(io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U)))
     checker.io.wb.dest          := RegNext(RegNext(RegNext(io.commits.info(index).ldest)))
     checker.io.wb.r1Addr        := RegNext(RegNext(RegNext(SelUop.ctrl.lsrc(0))))
     checker.io.wb.r2Addr        := RegNext(RegNext(RegNext(SelUop.ctrl.lsrc(1))))
+    // 这个data的数据是存在问题的， 首先有fusion的运算
     checker.io.wb.data          := RegNext(RegNext(RegNext(debug_exuData(deqPtrVec(index).value))))
-    checker.io.wb.r1Data        := 0.U // this two has to be move from pipeline
-    checker.io.wb.r2Data        := 0.U
+    // 想办法说把这两个数据从流水线中传递过来
+    checker.io.wb.r1Data        := RegNext(RegNext(RegNext(debug_exuSrc(deqPtrVec(index).value)(0)))) // this two has to be move from pipeline
+    checker.io.wb.r2Data        := RegNext(RegNext(RegNext(debug_exuSrc(deqPtrVec(index).value)(1))))
+    checker.io.wb.csrAddr       := 0.U
+    checker.io.wb.csrNdata      := 0.U
+    checker.io.wb.csrWr         := false.B
 
 
     ConnectCheckerWb.setChecker(checker)(64,env.rvConfig)
 
-    val mem = ConnectCheckerWb.makeMemSource()(64)
     val csr = ConnectCheckerWb.makeCSRSource()(64, env.rvConfig)
   }
-
+// 对于difftest来说，这里其实只需要给出pc就可以了，根本不用关心说整个这个PC的nextPC是什么
   if (env.EnableDifftest) {
     for (i <- 0 until CommitWidth) {
       val difftest = Module(new DifftestInstrCommit)

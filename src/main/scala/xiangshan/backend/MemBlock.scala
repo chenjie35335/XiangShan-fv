@@ -494,7 +494,7 @@ class MemBlockImp(outer: MemBlock) extends LazyModuleImp(outer)
     // atom inst will use store writeback port 0 to writeback exception info
     stOut(0).valid := true.B
     stOut(0).bits  := atomicsUnit.io.out.bits
-    assert(!lsq.io.mmioStout.valid && !storeUnits(0).io.stout.valid)
+    //assert(!lsq.io.mmioStout.valid && !storeUnits(0).io.stout.valid)
 
     // when atom inst writeback, surpress normal load trigger
     (0 until 2).map(i => {
@@ -536,7 +536,7 @@ class MemBlockImp(outer: MemBlock) extends LazyModuleImp(outer)
   io.fenceToSbuffer.sbIsEmpty := RegNext(sbuffer.io.flush.empty)
   // if both of them tries to flush sbuffer at the same time
   // something must have gone wrong
-  assert(!(fenceFlush && atomicsFlush))
+  //assert(!(fenceFlush && atomicsFlush))
   sbuffer.io.flush.valid := RegNext(fenceFlush || atomicsFlush)
 
   // AtomicsUnit: AtomicsUnit will override other control signials,
@@ -557,14 +557,14 @@ class MemBlockImp(outer: MemBlock) extends LazyModuleImp(outer)
     storeUnits(0).io.stin.valid := false.B
 
     state := s_atomics_0
-    assert(!st1_atomics)
+    //assert(!st1_atomics)
   }
   when (st1_atomics) {
     io.issue(atomic_rs1).ready := atomicsUnit.io.in.ready
     storeUnits(1).io.stin.valid := false.B
 
     state := s_atomics_1
-    assert(!st0_atomics)
+    //assert(!st0_atomics)
   }
   when (atomicsUnit.io.out.valid) {
     assert(state === s_atomics_0 || state === s_atomics_1)

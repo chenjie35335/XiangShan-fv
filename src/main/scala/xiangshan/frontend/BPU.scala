@@ -31,7 +31,7 @@ trait HasBPUConst extends HasXSParameter {
   val MaxBasicBlockSize = 32
   val LHistoryLength = 32
   // val numBr = 2
-  val useBPD = false
+  val useBPD = true
   val useLHist = true
   val numBrSlot = numBr-1
   val totalSlot = numBrSlot + 1

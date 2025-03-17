@@ -83,9 +83,11 @@ class FakeDCacheImp_Fv(outer: FakeDCache_FV) extends LazyModuleImp(outer) with H
   io.lsu.atomics.resp.bits.id := 1.U
 }
 
+
+//ICache DCache IUncache DUncache L2PTW
 class FakeDCache()(implicit p: Parameters) extends XSModule with HasDCacheParameters {
   val io = IO(new DCacheIO)
-
+// decoupled   a b valid ready data
   io := DontCare
   // to LoadUnit
   for (i <- 0 until LoadPipelineWidth) {

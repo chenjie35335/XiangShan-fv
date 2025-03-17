@@ -882,8 +882,7 @@ class AMOHelper() extends ExtModule {
 }
 
 class DCacheWrapper()(implicit p: Parameters) extends LazyModule with HasXSParameter {
-  val enableFormal = true
-  val useDcache = coreParams.dcacheParametersOpt.nonEmpty && !enableFormal
+  val useDcache = coreParams.dcacheParametersOpt.nonEmpty// && env.enableFormal
   val clientNode = TLIdentityNode()//if (useDcache) TLIdentityNode() else null
   val dcache = if (useDcache) LazyModule(new DCache()) else null
   val fakeDcache = if (!useDcache) LazyModule(new FakeDCache_FV()) else null

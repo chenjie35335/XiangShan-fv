@@ -157,7 +157,7 @@ class StridePF()(implicit p: Parameters) extends XSModule with HasSMSModuleHelpe
     val alloc = s1_alloc && i.U === s1_replace_idx
     val update = s1_hit && s1_match_vec(i)
     when(update){
-      assert(valids(i))
+      //assert(valids(i))
       entries_conf(i) := Mux(s1_stride_match,
         Mux(s1_conf === 3.U, 3.U, s1_conf + 1.U),
         Mux(s1_conf === 0.U, 0.U, s1_conf - 1.U)

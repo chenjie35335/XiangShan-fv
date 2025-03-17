@@ -28,7 +28,7 @@ trait XiangShanCli { this: Shell =>
   DisablePrintfAnnotation.addOptions(parser)
   EnablePrintfAnnotation.addOptions(parser)
   DisableAllPrintAnnotation.addOptions(parser)
-  RemoveAssertAnnotation.addOptions(parser)
+  //RemoveAssertAnnotation.addOptions(parser)
 }
 
 class XiangShanStage extends chisel3.stage.ChiselStage {

@@ -138,6 +138,27 @@ class InstrUncacheIO(implicit p: Parameters) extends ICacheBundle {
     val flush = Input(Bool())
 }
 
+class InstrUncacheEmpty(implicit p: Parameters) extends LazyModule with HasICacheParameters{
+  val clientParameters = TLMasterPortParameters.v1(
+    clients = Seq(TLMasterParameters.v1(
+      "InstrUncache",
+      sourceId = IdRange(0, cacheParams.nMMIOs)
+    ))
+  )
+  val clientNode = TLClientNode(Seq(clientParameters))
+
+  lazy val module = new InstrUncacheEmptyImp(this)
+}
+
+class InstrUncacheEmptyImp(outer: InstrUncacheEmpty)
+  extends LazyModuleImp(outer)
+    with HasICacheParameters
+    with HasTLDump
+{
+  val io = IO(new InstrUncacheIO)
+  io := DontCare
+}
+
 class InstrUncache()(implicit p: Parameters) extends LazyModule with HasICacheParameters {
 
   val clientParameters = TLMasterPortParameters.v1(

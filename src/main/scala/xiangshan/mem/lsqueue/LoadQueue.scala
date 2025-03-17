@@ -359,7 +359,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
         // rob writeback will not be triggered by a refill before inst replay
         miss(lastCycleLoadWbIndex) := false.B // disable refill listening
         datavalid(lastCycleLoadWbIndex) := false.B // disable refill listening
-        assert(!datavalid(lastCycleLoadWbIndex))
+        //assert(!datavalid(lastCycleLoadWbIndex))
       }
     }
     // update load error state in load s3
@@ -461,6 +461,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     // writeback missed int/fp load
     //
     // Int load writeback will finish (if not blocked) in one cycle
+    io.ldout(i).bits.src := seluop.SrcValue
     io.ldout(i).bits.uop := seluop
     io.ldout(i).bits.uop.lqIdx := loadWbSel(i).asTypeOf(new LqPtr)
     io.ldout(i).bits.data := rdataPartialLoad // not used

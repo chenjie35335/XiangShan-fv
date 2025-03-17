@@ -169,6 +169,7 @@ abstract class Exu(cfg: ExuConfig)(implicit p: Parameters) extends XSModule {
         in.head.ready := out.ready
         out.bits.data := in.head.bits.data
         out.bits.uop := in.head.bits.uop
+        out.bits.src := in.head.bits.src
         out.valid := in.head.valid
       } else {
         val arb = Module(new Arbiter(new ExuOutput, in.size))
@@ -178,6 +179,7 @@ abstract class Exu(cfg: ExuConfig)(implicit p: Parameters) extends XSModule {
           r.bits := DontCare
           r.bits.uop := l.bits.uop
           r.bits.data := l.bits.data
+          r.bits.src  := l.bits.src
         }
         arb.io.out <> out
       }
@@ -186,13 +188,14 @@ abstract class Exu(cfg: ExuConfig)(implicit p: Parameters) extends XSModule {
       val sel = Mux1H(in.map(x => x.valid -> x))
       out.bits.data := sel.bits.data
       out.bits.uop := sel.bits.uop
+      out.bits.src := sel.bits.src
       out.valid := sel.valid
     }
     in.map(_.fire)
   }
 
   val arbSel = writebackArb(functionUnits.map(_.io.out), io.out)
-
+  //原本来说
   val arbSelReg = arbSel.map(RegNext(_))
   val dataRegVec = functionUnits.map(_.io.out.bits.data).zip(config.fuConfigs).map{ case (i, cfg) =>
     if (config.hasFastUopOut && (!cfg.fastUopOut || !cfg.fastImplemented)) {
@@ -200,10 +203,16 @@ abstract class Exu(cfg: ExuConfig)(implicit p: Parameters) extends XSModule {
     }
     (if (cfg.fastUopOut && cfg.fastImplemented) i else RegNext(i))
   }
+//  val SrcRegVec = functionUnits.map(_.io.out.bits.src).zip(config.fuConfigs).map{ case (i, cfg) =>
+//    (if (cfg.fastUopOut && cfg.fastImplemented) i else RegNext(i))
+//  }
   val dataReg = Mux1H(arbSelReg, dataRegVec)
+  //val srcReg = Mux1H(arbSelReg, SrcRegVec)
+
 
   if (config.hasFastUopOut) {
     io.out.bits.data := dataReg
+    //io.out.bits.src := srcReg
   }
 
   val readIntFu = config.fuConfigs

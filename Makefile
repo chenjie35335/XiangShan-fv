@@ -52,7 +52,7 @@ override SIM_ARGS += --with-dramsim3
 endif
 
 # emu for the release version
-RELEASE_ARGS = --disable-all --remove-assert --fpga-platform
+RELEASE_ARGS = --disable-all --fpga-platform
 DEBUG_ARGS   = --enable-difftest
 ifeq ($(RELEASE),1)
 override SIM_ARGS += $(RELEASE_ARGS)
@@ -63,7 +63,7 @@ endif
 TIMELOG = $(BUILD_DIR)/time.log
 TIME_CMD = time -a -o $(TIMELOG)
 
-.DEFAULT_GOAL = verilog
+.DEFAULT_GOAL = systemverilog
 
 help:
 	mill -i XiangShan.test.runMain $(SIMTOP) --help
@@ -73,7 +73,7 @@ formal:$(SCALA_FILE)
 
 $(TOP_V): $(SCALA_FILE)
 	mkdir -p $(@D)
-	mill -i XiangShan.runMain $(FPGATOP) --target-dir $(@D)                      \
+	mill -i XiangShan.runMain $(FPGATOP) sverilog --target-dir $(@D)                      \
 		--config $(CONFIG) --full-stacktrace --output-file $(@F)    \
 		--infer-rw --repl-seq-mem -c:$(FPGATOP):-o:$(@D)/$(@F).conf \
 		--gen-mem-verilog full --num-cores $(NUM_CORES)             \

@@ -545,7 +545,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
                     csrio.perf.perfEventsLsu ++
                     hpm_hc.getPerf
   minstret := minstret + RegNext(csrio.perf.retiredInstr)
-  for(i <- 0 until 29){
+  for(i <- 0 until 21){
     perfCnts(i) := Mux(mcountinhibit(i+3) | !perfEventscounten(i), perfCnts(i), perfCnts(i) + perf_events(i).value)
   }
 

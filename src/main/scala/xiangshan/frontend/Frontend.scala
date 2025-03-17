@@ -18,18 +18,106 @@ package xiangshan.frontend
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.BoringUtils
+import device.EnableFormal
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
+import rvspeccore.checker.RVI
 import utils._
 import xiangshan._
-import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker,PMPReqBundle}
+import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
 import xiangshan.cache.mmu._
 import xiangshan.frontend.icache._
 
+class FakeFrontend()(implicit p: Parameters) extends LazyModule with HasXSParameter{
+  val icache = LazyModule(new ICacheEmpty())
+
+  val instrUncache = LazyModule(new InstrUncacheEmpty())
+
+  lazy val module = new FakeFrontendImp(this)
+}
+
+class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with HasXSParameter
+  with HasPerfEvents
+{// 接下来需要考虑一下ftq的问题
+  val io = IO(new Bundle() {
+    val hartId = Input(UInt(8.W)) // no use
+    val reset_vector = Input(UInt(PAddrBits.W)) // no use
+    val fencei = Input(Bool()) // fence related, but no use
+    val ptw = new TlbPtwIO(6) // ptw available. no use now
+    val backend = new FrontendToCtrlIO // very important, we should implement this carefully
+    val sfence = Input(new SfenceBundle) // no use
+    val tlbCsr = Input(new TlbCsrBundle) // no use
+    val csrCtrl = Input(new CustomCSRCtrlIO) //no use
+    val csrUpdate = new DistributedCSRUpdateReq // cache use
+    val error  = new L1CacheErrorInfo // cache use
+    val frontendInfo = new Bundle { // no use
+      val ibufFull  = Output(Bool())
+      val bpuInfo = new Bundle {
+        val bpRight = Output(UInt(XLEN.W))
+        val bpWrong = Output(UInt(XLEN.W))
+      }
+    }
+  })
+  // never launch ptw request
+  io.ptw := DontCare
+  io.ptw.req.foreach(_.valid := false.B)
+  io.ptw.req.foreach(_.bits := 0.U.asTypeOf(new PtwReq()))
+  io.ptw.resp.ready := false.B
+  // no use signal assign as DontCare
+  io.frontendInfo.ibufFull := false.B
+  io.frontendInfo.bpuInfo.bpRight := 0.U
+  io.frontendInfo.bpuInfo.bpWrong := 0.U
+  io.csrUpdate := DontCare
+  io.csrUpdate.w.valid := false.B
+  io.csrUpdate.w.bits.data := 0.U
+  io.csrUpdate.w.bits.addr := 0.U
+  io.error := DontCare
+  // the backend interface 对于每一项， 两边均接受之后就可以传递数据了
+  val pc = RegInit(VecInit(Seq.tabulate(DecodeWidth)(i =>
+    (io.reset_vector + (i * 4).U).asTypeOf(UInt(VAddrBits.W))
+  )))
+  val instr = WireInit(VecInit(Seq.fill(DecodeWidth)(0.U(XLEN.W))))
+  BoringUtils.addSink(instr, "formalInstr")
+  for(i <- 0 until DecodeWidth) {
+    io.backend.cfVec(i).valid := true.B
+    when(io.backend.cfVec(i).fire) {
+      if(env.EnableFormal) {
+        implicit val checker_xlen = 64
+        assume(RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr))
+      }
+      io.backend.cfVec(i).bits.instr        := instr(i)
+      io.backend.cfVec(i).bits.pc           := pc(i)
+      io.backend.cfVec(i).bits.foldpc       := XORFold(pc(i)(VAddrBits-1,1), MemPredPCWidth)
+      io.backend.cfVec(i).bits.exceptionVec := 0.U.asTypeOf(ExceptionVec())
+      io.backend.cfVec(i).bits.pd.brType := BrType.notCFI
+      io.backend.cfVec(i).bits.pd.isRet  := false.B
+      io.backend.cfVec(i).bits.pd.isRVC  := false.B
+      io.backend.cfVec(i).bits.pd.isCall := false.B
+      io.backend.cfVec(i).bits.pred_taken := true.B
+      io.backend.cfVec(i).bits.crossPageIPFFix := false.B
+      io.backend.cfVec(i).bits.ftqPtr := DontCare
+      io.backend.cfVec(i).bits.ftqOffset := DontCare
+      pc(i) := pc(i) + (4 * DecodeWidth).U
+      //ftq 相关的还是需要考虑，这部分先放在这里
+      io.backend.fromFtq.pc_mem_wen := false.B
+      io.backend.fromFtq.pc_mem_waddr := 0.U
+      io.backend.fromFtq.pc_mem_wdata := 0.U.asTypeOf(new Ftq_RF_Components)
+      io.backend.fromFtq.newest_entry_ptr := DontCare
+      io.backend.fromFtq.newest_entry_target := DontCare
+    }
+  }
+  //然后就是对于FTQ的前后端的同步问题， 而且这个是比较麻烦的就是说需要几个周期进行预取
+  // 所以说这个backend的valid信号可能需要修改
+
+  override val perfEvents = Seq()
+  generatePerfEvent()
+}
 
 class Frontend()(implicit p: Parameters) extends LazyModule with HasXSParameter{
 
   val instrUncache  = LazyModule(new InstrUncache())
-  val icache        = LazyModule(new Fake_ICache())
+  //val icache        = LazyModule(new Fake_ICache())
+  val icache = LazyModule(new ICache())
 
   lazy val module = new FrontendImp(this)
 }

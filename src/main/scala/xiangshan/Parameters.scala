@@ -238,7 +238,7 @@ case class XSCoreParameters
   )),
   L2NBanks: Int = 1,
   usePTWRepeater: Boolean = false,
-  softPTW: Boolean = true //dpi-c debug only
+  softPTW: Boolean = false //dpi-c debug only
 ){
   val allHistLens = SCHistLens ++ ITTageTableInfos.map(_._2) ++ TageTableInfos.map(_._2) :+ UbtbGHRLength
   val HistoryLength = allHistLens.max + numBr * FtqSize + 9 // 256 for the predictor configs now
@@ -266,7 +266,7 @@ case class DebugOptions
   EnableDebug: Boolean = false,
   EnablePerfDebug: Boolean = true,
   UseDRAMSim: Boolean = false,
-  EnableFormal: Boolean = false,
+  EnableFormal: Boolean = true,
   rvConfig: RVConfig = RVConfig(
     XLEN = 64,
     extensions = "M",
@@ -454,7 +454,8 @@ trait HasXSParameter {
   val numPCntHc: Int = 25
   val numPCntPtw: Int = 19
 
-  val numCSRPCntFrontend = 8
+  // new frontend
+  val numCSRPCntFrontend = 0 // 8
   val numCSRPCntCtrl     = 8
   val numCSRPCntLsu      = 8
   val numCSRPCntHc       = 5

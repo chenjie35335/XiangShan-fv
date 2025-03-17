@@ -67,7 +67,7 @@ class FtqNRSRAM[T <: Data](gen: T, numRead: Int)(implicit p: Parameters) extends
 
 class Ftq_RF_Components(implicit p: Parameters) extends XSBundle with BPUUtils with HasBPUConst {
   val startAddr = UInt(VAddrBits.W)
-  val nextLineAddr = UInt(VAddrBits.W)
+  val nextLineAddr = UInt(VAddrBits.W) // we can assume this is no use
   val isNextMask = Vec(PredictWidth, Bool())
   val fallThruError = Bool()
   // val carry = Bool()
@@ -90,7 +90,7 @@ class Ftq_RF_Components(implicit p: Parameters) extends XSBundle with BPUUtils w
   override def toPrintable: Printable = {
     p"startAddr:${Hexadecimal(startAddr)}"
   }
-}
+} // 现在有个问题是：对于这个startaddr, 什么时候更新呢？
 
 class Ftq_pd_Entry(implicit p: Parameters) extends XSBundle {
   val brMask = Vec(PredictWidth, Bool())
@@ -462,7 +462,7 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   allowToIfu := !ifuFlush && !backendRedirect.valid && !backendRedirectReg.valid
 
   def copyNum = 5
-  val bpuPtr, ifuPtr, ifuWbPtr, commPtr = RegInit(FtqPtr(false.B, 0.U))
+  val bpuPtr, ifuPtr, ifuWbPtr, commPtr = RegInit(FtqPtr(false.B, 0.U)) // 这两个是回写的作用， 告诉bpu回来的信息应该从哪里开始写
   val ifuPtrPlus1 = RegInit(FtqPtr(false.B, 1.U))
   val ifuPtrPlus2 = RegInit(FtqPtr(false.B, 2.U))
   val commPtrPlus1 = RegInit(FtqPtr(false.B, 1.U))

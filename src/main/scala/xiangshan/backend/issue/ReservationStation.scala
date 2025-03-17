@@ -219,7 +219,7 @@ class ReservationStationIO(params: RSParams)(implicit p: Parameters) extends XSB
   val fastWakeup = if (params.fixedLatency >= 0) Some(Vec(params.numDeq, ValidIO(new MicroOp))) else None
   val jump = if (params.isJump) Some(new Bundle {
     val jumpPc = Input(UInt(VAddrBits.W))
-    val jalr_target = Input(UInt(VAddrBits.W))
+    val jalr_target = Input(UInt(VAddrBits.W)) // 至少证明这个值没有用
   }) else None
   val feedback = if (params.hasFeedback) Some(Vec(params.numDeq,
     Flipped(new MemRSFeedbackIO)

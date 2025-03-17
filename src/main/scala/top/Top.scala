@@ -100,11 +100,11 @@ class XSTop()(implicit p: Parameters) extends BaseXSSoc() with HasSoCParameter
   } else {
     core_with_l2.map(_ => BundleBridgeSource(() => Reset()))
   }
-  if(!debugOpts.EnableFormal) {
+  //if(!debugOpts.EnableFormal) {
     core_rst_nodes.zip(core_with_l2.map(_.core_reset_sink)).foreach({
       case (source, sink) => sink := source
     })
-  }
+  //}
 
   l3cacheOpt match {
     case Some(l3) =>
@@ -209,7 +209,7 @@ object TopMain extends App with HasRocketChipStageUtils {
   override def main(args: Array[String]): Unit = {
     val (config, firrtlOpts) = ArgParser.parse(args)
     val soc = DisableMonitors(p => LazyModule(new XSTop()(p)))(config)
-    XiangShanStage.execute(firrtlOpts, Seq(
+    XiangShanStage.execute(firrtlOpts ++ Array("-X", "sverilog"), Seq(
       ChiselGeneratorAnnotation(() => {
         soc.core_with_l2.head.core.module
       })

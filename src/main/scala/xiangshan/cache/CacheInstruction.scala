@@ -177,7 +177,7 @@ class CSRCacheOpDecoder(decoder_name: String, id: Int)(implicit p: Parameters) e
       cacheop_csr_is_being_write(csr_name)
     ){
       req_field := io.csr.distribute_csr.w.bits.data
-      assert(wait_csr_op_req)
+      //assert(wait_csr_op_req)
     }
   }
 

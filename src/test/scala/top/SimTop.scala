@@ -103,7 +103,7 @@ object SimTop extends App {
     val (config, firrtlOpts) = ArgParser.parse(args)
     XiangShanStage.execute(firrtlOpts, Seq(
       ChiselGeneratorAnnotation(() => {
-        DisableMonitors(p => new SimTop()(p))(config).l_soc.module
+        DisableMonitors(p => new SimTop()(p))(config)//.l_soc.module
       })
     ))
     ElaborationArtefacts.files.foreach{ case (extension, contents) =>

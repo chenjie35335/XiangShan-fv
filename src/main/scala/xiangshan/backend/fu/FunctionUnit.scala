@@ -64,6 +64,7 @@ case class FuConfig
 
 class FuOutput(val len: Int)(implicit p: Parameters) extends XSBundle {
   val data = UInt(len.W)
+  val src = Vec(3, UInt(len.W))
   val uop = new MicroOp
 }
 
@@ -88,6 +89,10 @@ abstract class FunctionUnit(len: Int = 64)(implicit p: Parameters) extends XSMod
   XSPerfAccumulate("in_fire", io.in.fire)
   XSPerfAccumulate("out_valid", io.out.valid)
   XSPerfAccumulate("out_fire", io.out.fire)
+
+  val srcReg = RegEnable(io.in.bits.src, io.in.fire)
+
+  io.out.bits.src := Mux(io.in.fire, io.in.bits.src, srcReg)
 
 }
 

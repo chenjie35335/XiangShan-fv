@@ -20,6 +20,7 @@ import chipsalliance.rocketchip.config
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.BoringUtils
 import freechips.rocketchip.diplomacy.{BundleBridgeSource, LazyModule, LazyModuleImp}
 import freechips.rocketchip.interrupts.{IntSinkNode, IntSinkPortSimple}
 import freechips.rocketchip.tile.HasFPUParameters
@@ -138,7 +139,7 @@ abstract class XSCoreBase()(implicit p: config.Parameters) extends LazyModule
   val debug_int_sink = IntSinkNode(IntSinkPortSimple(1, 1))
   val plic_int_sink = IntSinkNode(IntSinkPortSimple(2, 1))
   // outer facing nodes
-  val frontend = LazyModule(new Frontend())
+  val frontend = LazyModule(new FakeFrontend())
   val ptw = LazyModule(new PTWWrapper())
   val ptw_to_l2_buffer = LazyModule(new TLBuffer)
   val csrOut = BundleBridgeSource(Some(() => new DistributedCSRIO()))
@@ -249,9 +250,17 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     val l2_pf_enable = Output(Bool())
     val perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks, new PerfEvent))
     val beu_errors = Output(new XSL1BusErrors())
+    val index = Input(UInt(1.W))
+    val instr = Input(Vec(DecodeWidth, UInt(32.W)))
   })
 
-  println(s"FPGAPlatform:${env.FPGAPlatform} EnableDebug:${env.EnableDebug}")
+  println(s"FPGAPlatform:${env.FPGAPlatform} EnableDebug:${env.EnableDebug} EnableFormal:${env.EnableFormal}" )
+
+  // formal verfication DontCare signals
+  val index = io.index
+  val instr = io.instr
+  BoringUtils.addSource(index, "formalIndex")
+  BoringUtils.addSource(instr, "formalInstr")
 
   val frontend = outer.frontend.module
   val ctrlBlock = outer.ctrlBlock.module
@@ -261,7 +270,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   val ptw_to_l2_buffer = outer.ptw_to_l2_buffer.module
   val exuBlocks = outer.exuBlocks.map(_.module)
 
-  frontend.io.hartId  := io.hartId
+  frontend.io.hartId  := io.hartId // 不需要考虑改方面接口
   ctrlBlock.io.hartId := io.hartId
   exuBlocks.foreach(_.io.hartId := io.hartId)
   memBlock.io.hartId := io.hartId
@@ -289,6 +298,9 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   val csrioIn = csrFenceMod.io.fuExtra.csrio.get
   val fenceio = csrFenceMod.io.fuExtra.fenceio.get
 
+  // 以下这些部分明显和csr相关的一些内容相连， 这部分的内容得尽量保证默认， 不会对执行产生影响
+  // backend的话是重点，需要提供所有的相关信息
+  // 这里指令的提交还是相当简单的， 但是对于
   frontend.io.backend <> ctrlBlock.io.frontend
   frontend.io.sfence <> fenceio.sfence
   frontend.io.tlbCsr <> csrioIn.tlb
@@ -374,7 +386,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   csrioIn.perf.retiredInstr <> ctrlBlock.io.robio.toCSR.perfinfo.retiredInstr
   csrioIn.perf.ctrlInfo <> ctrlBlock.io.perfInfo.ctrlInfo
   csrioIn.perf.memInfo <> memBlock.io.memInfo
-  csrioIn.perf.frontendInfo <> frontend.io.frontendInfo
+  csrioIn.perf.frontendInfo <> frontend.io.frontendInfo // 这部分同上
 
   csrioIn.perf.perfEventsFrontend <> frontend.getPerf
   csrioIn.perf.perfEventsCtrl     <> ctrlBlock.getPerf
@@ -413,7 +425,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
   memBlock.io.lsqio.rob <> ctrlBlock.io.robio.lsq
   memBlock.io.lsqio.exceptionAddr.isStore := CommitType.lsInstIsStore(ctrlBlock.io.robio.exception.bits.uop.ctrl.commitType)
 
-  val itlbRepeater1 = PTWRepeater(frontend.io.ptw, fenceio.sfence, csrioIn.tlb)
+  val itlbRepeater1 = PTWRepeater(frontend.io.ptw, fenceio.sfence, csrioIn.tlb) // 这部分内容也是保证默认
   val itlbRepeater2 = PTWRepeater(itlbRepeater1.io.ptw, ptw.io.tlb(0), fenceio.sfence, csrioIn.tlb)
   val dtlbRepeater1  = PTWFilter(memBlock.io.ptw, fenceio.sfence, csrioIn.tlb, l2tlbParams.filterSize)
   val dtlbRepeater2  = PTWRepeaterNB(passReady = false, dtlbRepeater1.io.ptw, ptw.io.tlb(1), fenceio.sfence, csrioIn.tlb)

@@ -98,6 +98,9 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
     uop.debugInfo := DontCare
     uop.lqIdx := DontCare
     uop.sqIdx := DontCare
+    uop.SrcValue(0) := DontCare
+    uop.SrcValue(1) := DontCare
+    uop.SrcValue(2) := DontCare
   })
 
   val needFpDest = Wire(Vec(RenameWidth, Bool()))
@@ -113,6 +116,10 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
   for (i <- 0 until RenameWidth) {
     uops(i).cf := io.in(i).bits.cf
     uops(i).ctrl := io.in(i).bits.ctrl
+    uops(i).SrcValue(0) := 0.U
+    uops(i).SrcValue(1) := 0.U
+    uops(i).SrcValue(2) := 0.U
+
 
     // update cf according to ssit result
     uops(i).cf.storeSetHit := io.ssit(i).valid

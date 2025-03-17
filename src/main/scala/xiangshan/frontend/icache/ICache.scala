@@ -460,6 +460,32 @@ class ICacheIO(implicit p: Parameters) extends ICacheBundle
   val csr_parity_enable = Input(Bool())
 }
 
+class ICacheEmpty()(implicit p: Parameters) extends LazyModule with HasICacheParameters{
+  val clientParameters = TLMasterPortParameters.v1(
+    Seq(TLMasterParameters.v1(
+      name = "icache",
+      sourceId = IdRange(0, cacheParams.nMissEntries + cacheParams.nReleaseEntries + cacheParams.nPrefetchEntries),
+      supportsProbe = TransferSizes(blockBytes),
+      supportsHint = TransferSizes(blockBytes)
+    )),
+    requestFields = cacheParams.reqFields,
+    echoFields = cacheParams.echoFields
+  )
+  val clientNode = TLClientNode(Seq(clientParameters))
+
+  lazy val module = new ICacheEmptyImp(this)
+}
+
+class ICacheEmptyImp(outer: ICacheEmpty) extends LazyModuleImp(outer)
+  with HasICacheParameters
+  with HasPerfEvents{
+  val io = IO(new ICacheIO)
+
+  io := DontCare
+  val perfEvents = Seq()
+  generatePerfEvent()
+}
+
 class Fake_ICache()(implicit p: Parameters) extends LazyModule with HasICacheParameters{
   val clientParameters = TLMasterPortParameters.v1(
     Seq(TLMasterParameters.v1(

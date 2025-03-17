@@ -93,10 +93,10 @@ class XSTile()(implicit p: Parameters) extends LazyModule
   val plic_int_sink = IntIdentityNode()
   val debug_int_sink = IntIdentityNode()
   val beu_int_source = IntIdentityNode()
-  if(!env.EnableFormal) {
+ // if(!env.EnableFormal) {
     val core_reset_sink = BundleBridgeSink(Some(() => Reset()))
-    val core_soft_rst = core_reset_sink.in.head._1
-  }
+
+ // }
 
   core.clint_int_sink :*= IntBuffer() :*= clint_int_sink
   core.plic_int_sink :*= IntBuffer() :*= plic_int_sink
@@ -156,6 +156,8 @@ class XSTile()(implicit p: Parameters) extends LazyModule
 
     dontTouch(io.hartId)
 
+    val core_soft_rst = core_reset_sink.in.head._1
+
     core.module.io.hartId := io.hartId
     io.cpu_halt := core.module.io.cpu_halt
     if(l2cache.isDefined){
@@ -173,6 +175,7 @@ class XSTile()(implicit p: Parameters) extends LazyModule
     } else {
       misc.module.beu_errors.l2 <> 0.U.asTypeOf(misc.module.beu_errors.l2)
     }
+
 
     // Modules are reset one by one
     // io_reset ----
