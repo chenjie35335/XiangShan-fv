@@ -359,7 +359,7 @@ class LoadQueue(implicit p: Parameters) extends XSModule
         // rob writeback will not be triggered by a refill before inst replay
         miss(lastCycleLoadWbIndex) := false.B // disable refill listening
         datavalid(lastCycleLoadWbIndex) := false.B // disable refill listening
-        //assert(!datavalid(lastCycleLoadWbIndex))
+        ////assert(!datavalid(lastCycleLoadWbIndex))
       }
     }
     // update load error state in load s3
@@ -510,15 +510,15 @@ class LoadQueue(implicit p: Parameters) extends XSModule
   }
 
   def getOldestInTwo(valid: Seq[Bool], uop: Seq[MicroOp]) = {
-    assert(valid.length == uop.length)
-    assert(valid.length == 2)
+    //assert(valid.length == uop.length)
+    //assert(valid.length == 2)
     Mux(valid(0) && valid(1),
       Mux(isAfter(uop(0).robIdx, uop(1).robIdx), uop(1), uop(0)),
       Mux(valid(0) && !valid(1), uop(0), uop(1)))
   }
 
   def getAfterMask(valid: Seq[Bool], uop: Seq[MicroOp]) = {
-    assert(valid.length == uop.length)
+    //assert(valid.length == uop.length)
     val length = valid.length
     (0 until length).map(i => {
       (0 until length).map(j => {

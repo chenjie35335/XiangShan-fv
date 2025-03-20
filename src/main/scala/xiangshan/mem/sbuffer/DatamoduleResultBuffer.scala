@@ -76,8 +76,8 @@ class DatamoduleResultBuffer[T <: Data]
     data(1)
   )
 
-  //assert(!(io.deq(1).valid && !io.deq(0).valid))
-  //assert(!(io.deq(1).ready && !io.deq(0).ready))
+  ////assert(!(io.deq(1).valid && !io.deq(0).valid))
+  ////assert(!(io.deq(1).ready && !io.deq(0).ready))
 
   entry_allowin(0) := !valids(0) ||
     io.deq(0).fire() && !deq_flag ||
@@ -95,8 +95,8 @@ class DatamoduleResultBuffer[T <: Data]
     entry_allowin(1)
   ) && io.enq(0).ready
 
-  //assert(!(io.enq(1).ready && !io.enq(0).ready))
-  //assert(!(io.enq(1).valid && !io.enq(0).valid))
+  ////assert(!(io.enq(1).ready && !io.enq(0).ready))
+  ////assert(!(io.enq(1).valid && !io.enq(0).valid))
 
   when(io.deq(0).fire()){
     when(deq_flag){

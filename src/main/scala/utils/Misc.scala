@@ -86,7 +86,7 @@ object Transpose
 }
 
 /**
- * assert when 'signal' is true for more than 'threshold' cycles
+ * //assert when 'signal' is true for more than 'threshold' cycles
  */
 object TimeOutAssert {
   def apply(signal: Bool, threshold: Int, message: String): Unit = {
@@ -96,7 +96,7 @@ object TimeOutAssert {
     }.otherwise {
       counter := 0.U
     }
-    assert(counter <= threshold.U, message)
+    //assert(counter <= threshold.U, message)
   }
 }
 

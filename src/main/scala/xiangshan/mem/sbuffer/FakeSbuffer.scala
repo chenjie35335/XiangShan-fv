@@ -31,7 +31,7 @@ class FakeSbuffer(implicit p: Parameters) extends XSModule {
     val forward = Vec(LoadPipelineWidth, Flipped(new LoadForwardQueryIO))
   })
 
-  //assert(!(io.in(1).valid && !io.in(0).valid))
+  ////assert(!(io.in(1).valid && !io.in(0).valid))
 
   // assign default values to signals
   io.in(1).ready := false.B

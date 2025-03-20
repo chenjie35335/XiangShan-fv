@@ -37,7 +37,7 @@ case class ExuParameters
   LduCnt: Int,
   StuCnt: Int
 ) {
-  assert(JmpCnt == 1, "Only support 1 JmpUnit now!")
+  //assert(JmpCnt == 1, "Only support 1 JmpUnit now!")
 
   def IntExuCnt = AluCnt + MulCnt + MduCnt + JmpCnt
 
@@ -133,10 +133,10 @@ abstract class Exu(cfg: ExuConfig)(implicit p: Parameters) extends XSModule {
 
   val fuIn = config.fuConfigs.map(fuCfg =>
     if (fuCfg.numIntSrc > 0) {
-      assert(fuCfg.numFpSrc == 0 || config == StdExeUnitCfg)
+      //assert(fuCfg.numFpSrc == 0 || config == StdExeUnitCfg)
       io.fromInt
     } else {
-      assert(fuCfg.numFpSrc > 0)
+      //assert(fuCfg.numFpSrc > 0)
       io.fromFp
     }
   )

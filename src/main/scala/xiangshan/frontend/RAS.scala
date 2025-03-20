@@ -223,7 +223,7 @@ class RAS(implicit p: Parameters) extends BasePredictor {
   val s2_last_target_out_dup = io.out.s2.full_pred.map(_.targets.last)
   val s2_is_jalr_dup = s2_full_pred.map(_.is_jalr)
   val s2_is_ret_dup = s2_full_pred.map(_.is_ret)
-  // assert(is_jalr && is_ret || !is_ret)
+  // //assert(is_jalr && is_ret || !is_ret)
   val ras_enable_dup = RegNext(dup(io.ctrl.ras_enable))
   for (ras_enable & s2_is_ret & s2_jalr_target & spec_top_addr <-
     ras_enable_dup zip s2_is_ret_dup zip s2_jalr_target_dup zip spec_top_addr_dup) {
@@ -248,7 +248,7 @@ class RAS(implicit p: Parameters) extends BasePredictor {
   val s3_last_target_out_dup = io.out.s3.full_pred.map(_.targets.last)
   val s3_is_jalr_dup = s3_full_pred.map(_.is_jalr)
   val s3_is_ret_dup = s3_full_pred.map(_.is_ret)
-  // assert(is_jalr && is_ret || !is_ret)
+  // //assert(is_jalr && is_ret || !is_ret)
 
   for (ras_enable & s3_is_ret & s3_jalr_target & s3_top <-
     ras_enable_dup zip s3_is_ret_dup zip s3_jalr_target_dup zip s3_top_dup) {

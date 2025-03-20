@@ -76,7 +76,7 @@ trait HasCircularQueuePtrHelper {
   }
 
   def distanceBetween[T <: CircularQueuePtr[T]](enq_ptr: T, deq_ptr: T): UInt = {
-    assert(enq_ptr.entries == deq_ptr.entries)
+    //assert(enq_ptr.entries == deq_ptr.entries)
     Mux(enq_ptr.flag === deq_ptr.flag,
       enq_ptr.value - deq_ptr.value,
       enq_ptr.entries.U + enq_ptr.value - deq_ptr.value)

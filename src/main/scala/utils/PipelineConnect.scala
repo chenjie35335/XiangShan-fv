@@ -93,7 +93,7 @@ class PipelineConnectBufferWithExtraData[T <: Data, FlushT <: Data, ExtraT <: Da
     }
   }
 
-  // after out.fire, we assert(!older === RegNext(older))
+  // after out.fire, we //assert(!older === RegNext(older))
   extra.out := extraData(!older)
 }
 

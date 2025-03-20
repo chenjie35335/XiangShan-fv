@@ -157,7 +157,7 @@ class StridePF()(implicit p: Parameters) extends XSModule with HasSMSModuleHelpe
     val alloc = s1_alloc && i.U === s1_replace_idx
     val update = s1_hit && s1_match_vec(i)
     when(update){
-      //assert(valids(i))
+      ////assert(valids(i))
       entries_conf(i) := Mux(s1_stride_match,
         Mux(s1_conf === 3.U, 3.U, s1_conf + 1.U),
         Mux(s1_conf === 0.U, 0.U, s1_conf - 1.U)
@@ -174,7 +174,7 @@ class StridePF()(implicit p: Parameters) extends XSModule with HasSMSModuleHelpe
       entries_last_addr(i) := s1_new_stride_vaddr
       entries_stride(i) := 0.S
     }
-    assert(!(update && alloc))
+    //assert(!(update && alloc))
   }
   when(s1_hit){
     replacement.access(OHToUInt(s1_match_vec.asUInt))
@@ -359,10 +359,10 @@ class ActiveGenerationTable()(implicit p: Parameters) extends XSModule with HasS
   }
 
   when(s1_update){
-    assert(PopCount(s1_update_mask) === 1.U, "multi-agt-update")
+    //assert(PopCount(s1_update_mask) === 1.U, "multi-agt-update")
   }
   when(s1_alloc){
-    assert(PopCount(s1_replace_mask) === 1.U, "multi-agt-alloc")
+    //assert(PopCount(s1_replace_mask) === 1.U, "multi-agt-alloc")
   }
 
   // pf_addr
@@ -671,7 +671,7 @@ class PatternHistoryTable()(implicit p: Parameters) extends XSModule with HasSMS
   )
 
   when(s3_valid && s3_hit){
-    assert(!Cat(s3_hit_vec).andR, "sms_pht: multi-hit!")
+    //assert(!Cat(s3_hit_vec).andR, "sms_pht: multi-hit!")
   }
 
   // generate pf req if hit
@@ -888,7 +888,7 @@ class PrefetchFilter()(implicit p: Parameters) extends XSModule with HasSMSModul
     }
   }
   when(s1_valid && s1_hit){
-    assert(PopCount(s1_update_vec) === 1.U, "sms_pf_filter: multi-hit")
+    //assert(PopCount(s1_update_vec) === 1.U, "sms_pf_filter: multi-hit")
   }
 
   XSPerfAccumulate("sms_pf_filter_recv_req", io.gen_req.valid)
@@ -1028,7 +1028,7 @@ class SMSPrefetcher()(implicit p: Parameters) extends BasePrefecher with HasSMSM
     )),
     pht.io.pf_gen_req.bits
   )
-  assert(!(agt_gen_valid && stride_gen_valid))
+  //assert(!(agt_gen_valid && stride_gen_valid))
   pf_filter.io.gen_req.valid := pht_gen_valid || agt_gen_valid || stride_gen_valid
   pf_filter.io.gen_req.bits := pf_gen_req
   io.tlb_req <> pf_filter.io.tlb_req

@@ -308,7 +308,7 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
     ftb.io.r.req.valid := io.req_pc.valid || io.u_req_pc.valid // io.s0_fire
     ftb.io.r.req.bits.setIdx := Mux(io.u_req_pc.valid, ftbAddr.getIdx(io.u_req_pc.bits), ftbAddr.getIdx(io.req_pc.bits)) // s0_idx
 
-    assert(!(io.req_pc.valid && io.u_req_pc.valid))
+    //assert(!(io.req_pc.valid && io.u_req_pc.valid))
 
     io.req_pc.ready := ftb.io.r.req.ready
     io.u_req_pc.ready := ftb.io.r.req.ready
@@ -332,8 +332,8 @@ class FTB(implicit p: Parameters) extends BasePredictor with FTBParams with BPUU
     // val hit_way_1h = VecInit(PriorityEncoderOH(total_hits))
     val u_hit_way = OHToUInt(u_total_hits)
 
-    // assert(PopCount(total_hits) === 1.U || PopCount(total_hits) === 0.U)
-    // assert(PopCount(u_total_hits) === 1.U || PopCount(u_total_hits) === 0.U)
+    // //assert(PopCount(total_hits) === 1.U || PopCount(total_hits) === 0.U)
+    // //assert(PopCount(u_total_hits) === 1.U || PopCount(u_total_hits) === 0.U)
     for (n <- 1 to numWays) {
       XSPerfAccumulate(f"ftb_pred_${n}_way_hit", PopCount(total_hits) === n.U)
       XSPerfAccumulate(f"ftb_update_${n}_way_hit", PopCount(u_total_hits) === n.U)

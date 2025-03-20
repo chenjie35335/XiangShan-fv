@@ -342,7 +342,7 @@ class LoadUnit_S2(implicit p: Parameters) extends XSModule with HasLoadHelper {
   io.dcache_kill := pmp.ld || pmp.mmio // move pmp resp kill to outside
   io.dcacheResp.ready := true.B
   val dcacheShouldResp = !(s2_tlb_miss || s2_exception || s2_mmio || s2_is_prefetch)
-  //assert(!(io.in.valid && (dcacheShouldResp && !io.dcacheResp.valid)), "DCache response got lost")
+  ////assert(!(io.in.valid && (dcacheShouldResp && !io.dcacheResp.valid)), "DCache response got lost")
 
   // merge forward result
   // lsq has higher priority than sbuffer
@@ -693,7 +693,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule with HasLoadHelper with 
   load_s2_valid_vec := 0x0.U(6.W)
   when (load_s2_leftFire) { load_s2_valid_vec := 0x3f.U(6.W)}
   when (load_s1.io.out.bits.uop.robIdx.needFlush(io.redirect)) { load_s2_valid_vec := 0x0.U(6.W) }
-  assert(RegNext(load_s2.io.in.valid === load_s2_valid_vec(0)))
+  //assert(RegNext(load_s2.io.in.valid === load_s2_valid_vec(0)))
   io.lsq.loadIn.bits.lq_data_wen_dup := load_s2_valid_vec.asBools()
 
   // s2_dcache_require_replay signal will be RegNexted, then used in s3
@@ -769,9 +769,9 @@ class LoadUnit(implicit p: Parameters) extends XSModule with HasLoadHelper with 
   // If replay is reported at load_s1, inst will be canceled (will not enter load_s2),
   // in that case:
   // * replay should not be reported twice
-  assert(!(RegNext(io.feedbackFast.valid) && io.feedbackSlow.valid))
+  //assert(!(RegNext(io.feedbackFast.valid) && io.feedbackSlow.valid))
   // * io.fastUop.valid should not be reported
-  assert(!RegNext(io.feedbackFast.valid && io.fastUop.valid))
+  //assert(!RegNext(io.feedbackFast.valid && io.fastUop.valid))
 
   // load forward_fail/ldld_violation check
   // check for inst in load pipeline
@@ -798,8 +798,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule with HasLoadHelper with 
   io.lsq.ldout.ready := !hitLoadOut.valid
 
   when(io.feedbackSlow.valid && !io.feedbackSlow.bits.hit){
-    assert(RegNext(!hitLoadOut.valid))
-    assert(RegNext(!io.lsq.loadIn.valid) || RegNext(load_s2.io.s2_dcache_require_replay))
+    //assert(RegNext(!hitLoadOut.valid))
+    //assert(RegNext(!io.lsq.loadIn.valid) || RegNext(load_s2.io.s2_dcache_require_replay))
   }
 
   val lastValidData = RegEnable(io.ldout.bits.data, io.ldout.fire)

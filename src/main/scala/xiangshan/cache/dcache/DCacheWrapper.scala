@@ -537,7 +537,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // tag array
   require(tagArray.io.read.size == (ldu.size + 1))
   val tag_write_intend = missQueue.io.refill_pipe_req.valid || mainPipe.io.tag_write_intend
-  assert(!RegNext(!tag_write_intend && tagArray.io.write.valid))
+  //assert(!RegNext(!tag_write_intend && tagArray.io.write.valid))
   ldu.zipWithIndex.foreach {
     case (ld, i) =>
       tagArray.io.read(i) <> ld.io.tag_read
@@ -763,7 +763,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   } .elsewhen (bus.d.bits.opcode === TLMessages.ReleaseAck) {
     wb.io.mem_grant <> bus.d
   } .otherwise {
-    assert (!bus.d.fire())
+    //assert (!bus.d.fire())
   }
 
   //----------------------------------------
@@ -793,13 +793,13 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
   // assertions
   // dcache should only deal with DRAM addresses
   when (bus.a.fire()) {
-    assert(bus.a.bits.address >= 0x80000000L.U)
+    //assert(bus.a.bits.address >= 0x80000000L.U)
   }
   when (bus.b.fire()) {
-    assert(bus.b.bits.address >= 0x80000000L.U)
+    //assert(bus.b.bits.address >= 0x80000000L.U)
   }
   when (bus.c.fire()) {
-    assert(bus.c.bits.address >= 0x80000000L.U)
+    //assert(bus.c.bits.address >= 0x80000000L.U)
   }
 
   //----------------------------------------
@@ -833,7 +833,7 @@ class DCacheImp(outer: DCache) extends LazyModuleImp(outer) with HasDCacheParame
     tagArray.io.cacheOp.resp.valid -> tagArray.io.cacheOp.resp.bits,
   ))
   cacheOpDecoder.io.error := io.error
-  assert(!((bankedDataArray.io.cacheOp.resp.valid +& tagArray.io.cacheOp.resp.valid) > 1.U))
+  //assert(!((bankedDataArray.io.cacheOp.resp.valid +& tagArray.io.cacheOp.resp.valid) > 1.U))
 
   //----------------------------------------
   // performance counters

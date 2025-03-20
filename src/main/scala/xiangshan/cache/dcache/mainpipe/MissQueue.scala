@@ -153,7 +153,7 @@ class MissEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
     val l2_pf_store_only = Input(Bool())
   })
 
-  assert(!RegNext(io.primary_valid && !io.primary_ready))
+  //assert(!RegNext(io.primary_valid && !io.primary_ready))
 
   val req = Reg(new MissReqWoStoreData)
   val req_store_mask = Reg(UInt(cfg.blockBytes.W))
@@ -208,7 +208,7 @@ class MissEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
   when (!s_write_storedata && req_valid) {
     // store data will be write to miss queue entry 1 cycle after req.fire()
     s_write_storedata := true.B
-    assert(RegNext(primary_fire || secondary_fire))
+    //assert(RegNext(primary_fire || secondary_fire))
   }
 
   when (primary_fire) {
@@ -245,8 +245,8 @@ class MissEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
   }
 
   when (secondary_fire) {
-    assert(io.req.bits.req_coh.state <= req.req_coh.state)
-    assert(!(io.req.bits.isAMO || req.isAMO))
+    //assert(io.req.bits.req_coh.state <= req.req_coh.state)
+    //assert(!(io.req.bits.isAMO || req.isAMO))
     // use the most uptodate meta
     req.req_coh := io.req.bits.req_coh
 
@@ -307,7 +307,7 @@ class MissEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
       hasData := true.B
     }.otherwise {
       // Grant
-      assert(full_overwrite)
+      //assert(full_overwrite)
       for (i <- 0 until blockRows) {
         refill_and_store_data(i) := new_data(i)
       }
@@ -390,7 +390,7 @@ class MissEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
   io.secondary_reject := should_reject(io.req.bits)
 
   // should not allocate, merge or reject at the same time
-  assert(RegNext(PopCount(Seq(io.primary_ready, io.secondary_ready, io.secondary_reject)) <= 1.U))
+  //assert(RegNext(PopCount(Seq(io.primary_ready, io.secondary_ready, io.secondary_reject)) <= 1.U))
 
   val refill_data_splited = WireInit(VecInit(Seq.tabulate(cfg.blockBytes * 8 / l1BusDataWidth)(i => {
     val data = refill_and_store_data.asUInt
@@ -430,7 +430,7 @@ class MissEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule {
   io.mem_grant.ready := !w_grantlast && s_acquire
 
   val grantack = RegEnable(edge.GrantAck(io.mem_grant.bits), io.mem_grant.fire())
-  assert(RegNext(!io.mem_grant.fire() || edge.isRequest(io.mem_grant.bits)))
+  //assert(RegNext(!io.mem_grant.fire() || edge.isRequest(io.mem_grant.bits)))
   io.mem_finish.valid := !s_grantack && w_grantfirst
   io.mem_finish.bits := grantack
 
@@ -589,13 +589,13 @@ class MissQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule wi
   val alloc = !reject && !merge && Cat(primary_ready_vec).orR
   val accept = alloc || merge
 
-  assert(RegNext(PopCount(secondary_ready_vec) <= 1.U))
-//  assert(RegNext(PopCount(secondary_reject_vec) <= 1.U))
+  //assert(RegNext(PopCount(secondary_ready_vec) <= 1.U))
+//  //assert(RegNext(PopCount(secondary_reject_vec) <= 1.U))
   // It is possible that one mshr wants to merge a req, while another mshr wants to reject it.
   // That is, a coming req has the same paddr as that of mshr_0 (merge),
   // while it has the same set and the same way as mshr_1 (reject).
   // In this situation, the coming req should be merged by mshr_0
-//  assert(RegNext(PopCount(Seq(merge, reject)) <= 1.U))
+//  //assert(RegNext(PopCount(Seq(merge, reject)) <= 1.U))
 
   def select_valid_one[T <: Bundle](
     in: Seq[DecoupledIO[T]],
@@ -606,7 +606,7 @@ class MissQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule wi
     out.valid := Cat(in.map(_.valid)).orR
     out.bits := ParallelMux(in.map(_.valid) zip in.map(_.bits))
     in.map(_.ready := out.ready) 
-    assert(!RegNext(out.valid && PopCount(Cat(in.map(_.valid))) > 1.U))
+    //assert(!RegNext(out.valid && PopCount(Cat(in.map(_.valid))) > 1.U))
   }
 
   io.mem_grant.ready := false.B

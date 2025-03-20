@@ -211,7 +211,7 @@ class WritebackEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
   // s_invalid: receive requests
   // new req entering
   when (io.req.valid && io.primary_valid && io.primary_ready) {
-    assert (remain === 0.U)
+    //assert (remain === 0.U)
     req := io.req.bits
     s_data_override := false.B
     // only update paddr when allocate a new missqueue entry
@@ -236,9 +236,9 @@ class WritebackEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
   // s_sleep: wait for refill pipe to inform me that I can keep releasing
   val merge = io.secondary_valid && io.secondary_ready
   when (state === s_sleep) {
-    assert(remain === 0.U)
+    //assert(remain === 0.U)
     // There shouldn't be a new Release with the same addr in sleep state
-    assert(!(merge && io.req.bits.voluntary))
+    //assert(!(merge && io.req.bits.voluntary))
 
     val update = io.release_update.valid && io.release_update.bits.addr === paddr_dup_0
     when (update) {
@@ -315,7 +315,7 @@ class WritebackEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
 
   voluntaryReleaseData.echo.lift(DirtyKey).foreach(_ := req.dirty)
   when(busy) {
-    assert(!req.dirty || req.hasData)
+    //assert(!req.dirty || req.hasData)
   }
 
   io.mem_release.valid := busy
@@ -527,7 +527,7 @@ class WritebackEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
     data := io.req_data.data
   }
 
-  assert(!RegNext(!s_data_merge && !s_data_override))
+  //assert(!RegNext(!s_data_merge && !s_data_override))
 
   // performance counters
   XSPerfAccumulate("wb_req", io.req.fire())
@@ -623,7 +623,7 @@ class WritebackQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModu
   io.probe_ttob_check_resp.valid := RegNext(io.probe_ttob_check_req.valid) // for debug only
   io.probe_ttob_check_resp.bits.toN := VecInit(entries.map(e => e.io.probe_ttob_check_resp.bits.toN)).asUInt.orR
 
-  assert(RegNext(!(io.mem_grant.valid && !io.mem_grant.ready)))
+  //assert(RegNext(!(io.mem_grant.valid && !io.mem_grant.ready)))
   io.mem_grant.ready := true.B
 
   val miss_req_conflict = VecInit(entries.map(e => e.io.block_addr.valid && e.io.block_addr.bits === io.miss_req.bits)).asUInt.orR

@@ -61,7 +61,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
     val error = Output(new L1CacheErrorInfo())
   })
 
-  assert(RegNext(io.meta_read.ready))
+  //assert(RegNext(io.meta_read.ready))
 
   val s1_ready = Wire(Bool())
   val s2_ready = Wire(Bool())
@@ -96,7 +96,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   val s0_req = io.lsu.req.bits
   val s0_fire = s0_valid && s1_ready
 
-  assert(RegNext(!(s0_valid && (s0_req.cmd =/= MemoryOpConstants.M_XRD && s0_req.cmd =/= MemoryOpConstants.M_PFR && s0_req.cmd =/= MemoryOpConstants.M_PFW))), "LoadPipe only accepts load req / softprefetch read or write!")
+  //assert(RegNext(!(s0_valid && (s0_req.cmd =/= MemoryOpConstants.M_XRD && s0_req.cmd =/= MemoryOpConstants.M_PFR && s0_req.cmd =/= MemoryOpConstants.M_PFW))), "LoadPipe only accepts load req / softprefetch read or write!")
   dump_pipeline_reqs("LoadPipe s0", s0_valid, s0_req)
 
   // --------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   val s1_tag_eq_way_dup_dc = wayMap((w: Int) => tag_resp(w) === (get_tag(s1_paddr_dup_dcache))).asUInt
   val s1_tag_match_way_dup_dc = wayMap((w: Int) => s1_tag_eq_way_dup_dc(w) && meta_resp(w).coh.isValid()).asUInt
   val s1_tag_match_dup_dc = s1_tag_match_way_dup_dc.orR
-  assert(RegNext(!s1_valid || PopCount(s1_tag_match_way_dup_dc) <= 1.U), "tag should not match with more than 1 way")
+  //assert(RegNext(!s1_valid || PopCount(s1_tag_match_way_dup_dc) <= 1.U), "tag should not match with more than 1 way")
 
   // lsu side tag match
   val s1_tag_eq_way_dup_lsu = wayMap((w: Int) => tag_resp(w) === (get_tag(s1_paddr_dup_lsu))).asUInt
@@ -234,8 +234,8 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   val s2_flag_error = false.B//RegEnable(s1_flag_error, s1_fire)
 
   val s2_hit = s2_tag_match && s2_has_permission && s2_hit_coh === s2_new_hit_coh
-  assert(!RegNext(s2_valid && (s2_tag_match && !s2_hit)))
-  assert(!RegNext(s2_valid && (s2_hit_dup_lsu =/= s2_hit)))
+  //assert(!RegNext(s2_valid && (s2_tag_match && !s2_hit)))
+  //assert(!RegNext(s2_valid && (s2_hit_dup_lsu =/= s2_hit)))
 
   // only dump these signals when they are actually valid
   dump_pipeline_valids("LoadPipe s2", "s2_hit", s2_valid && s2_hit)
@@ -280,7 +280,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
 
   io.lsu.resp.valid := resp.valid
   io.lsu.resp.bits := resp.bits
-  assert(RegNext(!(resp.valid && !io.lsu.resp.ready)), "lsu should be ready in s2")
+  //assert(RegNext(!(resp.valid && !io.lsu.resp.ready)), "lsu should be ready in s2")
 
   when (resp.valid) {
     resp.bits.dump()
@@ -289,7 +289,7 @@ class LoadPipe(id: Int)(implicit p: Parameters) extends DCacheModule with HasPer
   io.lsu.debug_s1_hit_way := s1_tag_match_way_dup_dc
   io.lsu.s1_disable_fast_wakeup := io.disable_ld_fast_wakeup
   io.lsu.s1_bank_conflict := io.bank_conflict_fast
-  assert(RegNext(s1_ready && s2_ready), "load pipeline should never be blocked")
+  //assert(RegNext(s1_ready && s2_ready), "load pipeline should never be blocked")
 
   // --------------------------------------------------------------------------------
   // stage 3

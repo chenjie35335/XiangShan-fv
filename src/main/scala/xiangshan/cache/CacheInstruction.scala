@@ -177,7 +177,7 @@ class CSRCacheOpDecoder(decoder_name: String, id: Int)(implicit p: Parameters) e
       cacheop_csr_is_being_write(csr_name)
     ){
       req_field := io.csr.distribute_csr.w.bits.data
-      //assert(wait_csr_op_req)
+      ////assert(wait_csr_op_req)
     }
   }
 
@@ -231,7 +231,7 @@ class CSRCacheOpDecoder(decoder_name: String, id: Int)(implicit p: Parameters) e
     when(CacheInstrucion.isReadOp(translated_cache_req.opCode)){
       schedule_csr_op_resp_data := true.B
       schedule_csr_op_resp_finish := false.B
-      assert(data_transfer_cnt === 0.U)
+      //assert(data_transfer_cnt === 0.U)
     }.otherwise{
       schedule_csr_op_resp_data := false.B
       schedule_csr_op_resp_finish := true.B

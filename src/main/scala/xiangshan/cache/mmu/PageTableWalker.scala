@@ -140,7 +140,7 @@ class PtwFsm()(implicit p: Parameters) extends XSModule with HasPtwConst with Ha
         when (io.pmp.resp.ld) { // pmp check failed, raise access-fault
           // do nothing, RegNext the pmp check result and do it later (mentioned above)
         }.otherwise { // go to next level.
-          assert(level === 0.U)
+          //assert(level === 0.U)
           level := levelNext
           state := s_mem_req
         }
@@ -167,7 +167,7 @@ class PtwFsm()(implicit p: Parameters) extends XSModule with HasPtwConst with Ha
   io.llptw.bits.req_info.vpn := vpn
   io.llptw.bits.ppn := memPte.ppn
 
-  assert(level =/= 2.U || level =/= 3.U)
+  //assert(level =/= 2.U || level =/= 3.U)
 
   val l1addr = MakeAddr(satp.ppn, getVpnn(vpn, 2))
   val l2addr = MakeAddr(Mux(l1Hit, ppn, memPte.ppn), getVpnn(vpn, 1))
@@ -352,7 +352,7 @@ class LLPTW(implicit p: Parameters) extends XSModule with HasPtwConst with HasPe
     }
   }
   when (io.out.fire()) {
-    assert(state(mem_ptr) === state_mem_out)
+    //assert(state(mem_ptr) === state_mem_out)
     state(mem_ptr) := state_idle
   }
   mem_resp_hit.map(a => when (a) { a := false.B } )

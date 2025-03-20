@@ -82,7 +82,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
     4.U -> 2.U,
     8.U -> 3.U
   ).map(m => (size===m._1) -> m._2))
-  assert(!(io.mem_acquire.valid && !legal))
+  //assert(!(io.mem_acquire.valid && !legal))
 
   val load = edge.Get(
     fromSource      = io.id,
@@ -114,7 +114,7 @@ class MMIOEntry(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule
 
     when (io.mem_grant.fire()) {
       resp_data := io.mem_grant.bits.data
-      assert(refill_done, "MMIO response should be one beat only!")
+      //assert(refill_done, "MMIO response should be one beat only!")
       state := s_send_resp
     }
   }

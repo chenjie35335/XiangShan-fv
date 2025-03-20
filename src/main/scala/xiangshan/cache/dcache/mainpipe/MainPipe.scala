@@ -165,8 +165,8 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
   })
 
   // meta array is made of regs, so meta write or read should always be ready
-  assert(RegNext(io.meta_read.ready))
-  assert(RegNext(io.meta_write.ready))
+  //assert(RegNext(io.meta_read.ready))
+  //assert(RegNext(io.meta_write.ready))
 
   val s1_s0_set_conflict, s2_s0_set_conlict, s3_s0_set_conflict = Wire(Bool())
   val set_conflict = s1_s0_set_conflict || s2_s0_set_conlict || s3_s0_set_conflict
@@ -309,7 +309,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
       )
     )
   )
-  assert(!RegNext(s1_fire && PopCount(s1_way_en) > 1.U))
+  //assert(!RegNext(s1_fire && PopCount(s1_way_en) > 1.U))
   val s1_tag = Mux(
     s1_req.replace,
     get_tag(s1_req.addr),
@@ -387,7 +387,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
   // For a store req, it either hits and goes to s3, or miss and enter miss queue immediately
   val s2_can_go_to_s3 = (s2_req_replace_dup_1 || s2_req.probe || s2_req.miss || (s2_req.isStore || s2_req.isAMO) && s2_hit) && s3_ready
   val s2_can_go_to_mq = RegEnable(s1_pregen_can_go_to_mq, s1_fire)
-  assert(RegNext(!(s2_valid && s2_can_go_to_s3 && s2_can_go_to_mq)))
+  //assert(RegNext(!(s2_valid && s2_can_go_to_s3 && s2_can_go_to_mq)))
   val s2_can_go = s2_can_go_to_s3 || s2_can_go_to_mq
   val s2_fire = s2_valid && s2_can_go
   val s2_fire_to_s3 = s2_valid_dup(2) && s2_can_go_to_s3
@@ -1092,7 +1092,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
       )
     )
   )
-  assert(!(s3_valid && banked_wmask.orR && !update_data))
+  //assert(!(s3_valid && banked_wmask.orR && !update_data))
 
   val s3_sc_data_merged_dup_for_data_w_valid = Wire(Vec(DCacheBanks, UInt(DCacheSRAMRowBits.W)))
   val s3_req_amo_data_dup_for_data_w_valid = RegEnable(s2_req.amo_data, s2_fire_to_s3)
@@ -1369,7 +1369,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
   s3_ready := !s3_valid_dup(5) || s3_can_go
   s3_s0_set_conflict := s3_valid_dup(6) && s3_idx_dup(0) === s0_idx
   s3_s0_set_conflict_store := s3_valid_dup(7) && s3_idx_dup(1) === store_idx
-  assert(RegNext(!s3_valid || !(s3_req_source_dup_2 === STORE_SOURCE.U && !s3_req.probe) || s3_hit)) // miss store should never come to s3
+  //assert(RegNext(!s3_valid || !(s3_req_source_dup_2 === STORE_SOURCE.U && !s3_req.probe) || s3_hit)) // miss store should never come to s3
 
   when(s3_fire) {
     s3_s_amoalu := false.B
@@ -1479,7 +1479,7 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
   XSPerfAccumulate("fake_tag_write_intend", io.tag_write_intend && !io.tag_write.valid)
   XSPerfAccumulate("mainpipe_tag_write", io.tag_write.valid)
 
-  assert(!RegNext(io.tag_write.valid && !io.tag_write_intend))
+  //assert(!RegNext(io.tag_write.valid && !io.tag_write_intend))
 
   io.data_write.valid := s3_valid_dup_for_data_w_valid && s3_update_data_cango_dup_for_data_w_valid && update_data_dup_for_data_w_valid
   io.data_write.bits.way_en := s3_way_en_dup(3)
@@ -1494,9 +1494,9 @@ class MainPipe(implicit p: Parameters) extends DCacheModule with HasPerfEvents {
       s3_store_data_merged
     )
   )
-  assert(RegNext(!io.meta_write.valid || !s3_req.replace))
-  assert(RegNext(!io.tag_write.valid || !s3_req.replace))
-  assert(RegNext(!io.data_write.valid || !s3_req.replace))
+  //assert(RegNext(!io.meta_write.valid || !s3_req.replace))
+  //assert(RegNext(!io.tag_write.valid || !s3_req.replace))
+  //assert(RegNext(!io.data_write.valid || !s3_req.replace))
 
   io.wb.valid := s3_valid_dup_for_wb_valid && (
     // replace

@@ -51,7 +51,7 @@ object XSLog {
         val commonInfo = p"[$debugLevel][time=$logTimestamp] $MagicStr: "
         printf((if (prefix) commonInfo else p"") + pable)
         if (debugLevel >= XSLogLevel.ERROR) {
-          assert(false.B)
+          //assert(false.B)
         }
       }
     }

@@ -915,7 +915,7 @@ class ReservationStation(params: RSParams)(implicit p: Parameters) extends XSMod
       }
     }
     for (i <- 0 until params.numDeq) {
-      // currently we assert there's only one enqueue.
+      // currently we //assert there's only one enqueue.
       require(params.numDeq == 1, "only one jump now")
       val oldestPc = Mux1H(s1_in_oldestPtrOH.bits, pcMem)
       val issuePc = Mux1H(s1_in_selectPtrOH(i), pcMem)

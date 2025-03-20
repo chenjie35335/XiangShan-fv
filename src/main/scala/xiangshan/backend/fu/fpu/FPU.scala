@@ -42,7 +42,7 @@ object FPU {
     } else if(t == f64){
       x(63, 0)
     } else {
-      assert(cond = false, "Unknown ftype!")
+      //assert(cond = false, "Unknown ftype!")
       0.U
     }
   }

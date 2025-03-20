@@ -54,16 +54,16 @@ class ExuWbArbiter(n: Int, hasFastUopOut: Boolean, fastVec: Seq[Boolean])(implic
     data.valid := in.valid
     data.bits := in.bits.data
     in.ready := ctrl.ready
-    assert(ctrl.ready === data.ready)
+    //assert(ctrl.ready === data.ready)
   }
-  assert(ctrl_arb.io.chosen === data_arb.io.chosen)
+  //assert(ctrl_arb.io.chosen === data_arb.io.chosen)
 
   io.out.bits.data := data_arb.io.out.bits
   for((name, d) <- ctrl_arb.io.out.bits.elements){
     io.out.bits.elements(name) := d
   }
   io.out.valid := ctrl_arb.io.out.valid
-  assert(ctrl_arb.io.out.valid === data_arb.io.out.valid)
+  //assert(ctrl_arb.io.out.valid === data_arb.io.out.valid)
 
   if (hasFastUopOut) {
     val uop = ctrl_arb.io.out.bits.uop

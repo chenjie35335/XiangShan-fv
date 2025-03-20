@@ -20,6 +20,7 @@ import chisel3.stage.ChiselCli
 import firrtl.AnnotationSeq
 import firrtl.options.{Dependency, HasShellOptions, Shell, ShellOption}
 import firrtl.stage.{FirrtlCli, RunFirrtlTransformAnnotation}
+import firrtl.transforms.formal.DontAssertSubmoduleAssumptionsAnnotation
 import freechips.rocketchip.transforms.naming.{OverrideDesiredNameAnnotation, RenameDesiredNames}
 import xstransforms._
 
@@ -47,6 +48,7 @@ object XiangShanStage {
     (new XiangShanStage).execute(
       args,
       annotations ++ Seq(
+        DontAssertSubmoduleAssumptionsAnnotation,
         RunFirrtlTransformAnnotation(new PrintControl),
         RunFirrtlTransformAnnotation(new PrintModuleName),
         RunFirrtlTransformAnnotation(new RenameDesiredNames)

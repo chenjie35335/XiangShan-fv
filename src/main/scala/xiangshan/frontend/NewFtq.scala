@@ -827,7 +827,7 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
     has_false_hit := br_false_hit || jal_false_hit || hit_pd_mispred_reg
     XSDebug(has_false_hit, "FTB false hit by br or jal or hit_pd, startAddr: %x\n", pdWb.bits.pc(0))
 
-    // assert(!has_false_hit)
+    // //assert(!has_false_hit)
   }
 
   when (has_false_hit) {
@@ -1289,7 +1289,7 @@ class Ftq(implicit p: Parameters) extends XSModule with HasCircularQueuePtrHelpe
   val update_valid = io.toBpu.update.valid
   def u(cond: Bool) = update_valid && cond
   val ftb_false_hit = u(update.false_hit)
-  // assert(!ftb_false_hit)
+  // //assert(!ftb_false_hit)
   val ftb_hit = u(commit_hit === h_hit)
 
   val ftb_new_entry = u(ftbEntryGen.is_init_entry)

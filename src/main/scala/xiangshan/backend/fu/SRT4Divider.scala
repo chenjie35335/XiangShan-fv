@@ -423,7 +423,7 @@ class SRT4QDS(len: Int, itn_len: Int) extends Module {
   qVec(quot_pos_1) := signs(3) && ~signs(2) && ~signs(1)
   qVec(quot_pos_2) := ~signs(3) && ~signs(2) && ~signs(1)
   io.qIterEnd := qVec.asUInt
-  // assert(PopCount(qVec) === 1.U)
+  // //assert(PopCount(qVec) === 1.U)
 }
 
 

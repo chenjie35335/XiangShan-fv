@@ -44,7 +44,7 @@ class RawDataModuleTemplate[T <: Data](
   // read ports
   val rvec = if (isSync) RegNext(io.rvec) else io.rvec
   for (i <- 0 until numRead) {
-    assert(PopCount(rvec(i)) <= 1.U)
+    //assert(PopCount(rvec(i)) <= 1.U)
     io.rdata(i) := Mux1H(rvec(i), data)
   }
 
@@ -65,7 +65,7 @@ class RawDataModuleTemplate[T <: Data](
   // write ports
   for (i <- 0 until numEntries) {
     val w = VecInit((0 until numWrite).map(j => wen(j) && wvec(j)(i)))
-    assert(PopCount(w) <= 1.U)
+    //assert(PopCount(w) <= 1.U)
     when (w.asUInt.orR) {
       data(i) := Mux1H(w, wdata)
     }

@@ -113,7 +113,7 @@ trait HasXSDts {
       9,    // seip  [plic]
       65535 // debug [debug]
     )
-    //assert(int_resources.size == int_ids.size)
+    ////assert(int_resources.size == int_ids.size)
     for((resources, id) <- int_resources.zip(int_ids)){
       for(r <- resources){
         r.bind(intcDevice, ResourceInt(id))

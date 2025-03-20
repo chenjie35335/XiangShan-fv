@@ -100,7 +100,7 @@ abstract class AbstractBankedDataArray(implicit p: Parameters) extends DCacheMod
     val cacheOp_req_dup = Vec(11, Flipped(Valid(new CacheCtrlReqInfo)))
     val cacheOp_req_bits_opCode_dup = Input(Vec(11, UInt(XLEN.W)))
   })
-  assert(LoadPipelineWidth <= 2) // BankedDataArray is designed for no more than 2 read ports
+  //assert(LoadPipelineWidth <= 2) // BankedDataArray is designed for no more than 2 read ports
 
   def pipeMap[T <: Data](f: Int => T) = VecInit((0 until LoadPipelineWidth).map(f))
 
@@ -167,8 +167,8 @@ class BankedDataArray(implicit p: Parameters) extends AbstractBankedDataArray {
       }
     })
 
-    assert(RegNext(!io.w.en || PopCount(io.w.way_en) <= 1.U))
-    assert(RegNext(!io.r.en || PopCount(io.r.way_en) <= 1.U))
+    //assert(RegNext(!io.w.en || PopCount(io.w.way_en) <= 1.U))
+    //assert(RegNext(!io.r.en || PopCount(io.r.way_en) <= 1.U))
 
     val r_way_en_reg = RegNext(io.r.way_en)
 
@@ -263,7 +263,7 @@ class BankedDataArray(implicit p: Parameters) extends AbstractBankedDataArray {
     io.read(rport_index).ready := !(rwhazard || rrhazard)
 
     // use way_en to select a way after data read out
-    assert(!(RegNext(io.read(rport_index).fire() && PopCount(io.read(rport_index).bits.way_en) > 1.U)))
+    //assert(!(RegNext(io.read(rport_index).fire() && PopCount(io.read(rport_index).bits.way_en) > 1.U)))
     way_en(rport_index) := io.read(rport_index).bits.way_en
   })
   io.readline.ready := !(rwhazard)

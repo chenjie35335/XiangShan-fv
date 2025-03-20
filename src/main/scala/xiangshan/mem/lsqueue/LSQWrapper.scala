@@ -202,9 +202,9 @@ class LsqWrappper(implicit p: Parameters) extends XSModule with HasDCacheParamet
     io.uncache.resp <> storeQueue.io.uncache.resp
   }
 
-  //assert(!(loadQueue.io.uncache.req.valid && storeQueue.io.uncache.req.valid))
-  //assert(!(loadQueue.io.uncache.resp.valid && storeQueue.io.uncache.resp.valid))
-  //assert(!((loadQueue.io.uncache.resp.valid || storeQueue.io.uncache.resp.valid) && pendingstate === s_idle))
+  ////assert(!(loadQueue.io.uncache.req.valid && storeQueue.io.uncache.req.valid))
+  ////assert(!(loadQueue.io.uncache.resp.valid && storeQueue.io.uncache.resp.valid))
+  ////assert(!((loadQueue.io.uncache.resp.valid || storeQueue.io.uncache.resp.valid) && pendingstate === s_idle))
 
   io.lqFull := loadQueue.io.lqFull
   io.sqFull := storeQueue.io.sqFull

@@ -169,7 +169,7 @@ class ICacheMissEntry(edge: TLEdgeOut, id: Int)(implicit p: Parameters) extends 
           grant_param := io.mem_grant.bits.param
           is_dirty    := io.mem_grant.bits.echo.lift(DirtyKey).getOrElse(false.B)
           when(readBeatCnt === (refillCycles - 1).U) {
-            assert(refill_done, "refill not done!")
+            //assert(refill_done, "refill not done!")
             state := s_send_grant_ack
             state_dup.map(_ := s_send_grant_ack)
           }

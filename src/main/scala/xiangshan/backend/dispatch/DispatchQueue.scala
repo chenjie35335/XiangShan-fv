@@ -254,7 +254,7 @@ class DispatchQueue(size: Int, enqnum: Int, deqnum: Int)(implicit p: Parameters)
   }
   XSDebug(false, true.B, "\n")
 
-  // XSError(isAfter(headPtr(0), tailPtr(0)), p"assert greaterOrEqualThan(tailPtr: ${tailPtr(0)}, headPtr: ${headPtr(0)}) failed\n")
+  // XSError(isAfter(headPtr(0), tailPtr(0)), p"//assert greaterOrEqualThan(tailPtr: ${tailPtr(0)}, headPtr: ${headPtr(0)}) failed\n")
   QueuePerf(size, PopCount(stateEntries.map(_ =/= s_invalid)), !canEnqueue)
   io.dqFull := !canEnqueue
   XSPerfAccumulate("in", numEnq)

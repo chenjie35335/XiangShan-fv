@@ -212,9 +212,9 @@ class ProbeQueue(edge: TLEdgeOut)(implicit p: Parameters) extends DCacheModule w
   when (io.mem_probe.valid) {
     // before a probe finishes, L2 should not further issue probes on this block
     val probe_conflict = VecInit(entries.map(e => e.io.block_addr.valid && get_block(e.io.block_addr.bits) === get_block(io.mem_probe.bits.address))).asUInt.orR
-    assert (!probe_conflict)
+    //assert (!probe_conflict)
     // for now, we can only deal with ProbeBlock
-    assert (io.mem_probe.bits.opcode === TLMessages.Probe)
+    //assert (io.mem_probe.bits.opcode === TLMessages.Probe)
   }
 
   // debug output

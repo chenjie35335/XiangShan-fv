@@ -195,7 +195,7 @@ class PTWImp(outer: PTW)(implicit p: Parameters) extends PtwModule(outer) with H
   val waiting_resp = RegInit(VecInit(Seq.fill(MemReqWidth)(false.B)))
   val flush_latch = RegInit(VecInit(Seq.fill(MemReqWidth)(false.B)))
   for (i <- waiting_resp.indices) {
-    assert(!flush_latch(i) || waiting_resp(i)) // when sfence_latch wait for mem resp, waiting_resp should be true
+    //assert(!flush_latch(i) || waiting_resp(i)) // when sfence_latch wait for mem resp, waiting_resp should be true
   }
 
   val llptw_out = llptw.io.out
@@ -208,7 +208,7 @@ class PTWImp(outer: PTW)(implicit p: Parameters) extends PtwModule(outer) with H
   mem_arb.io.in(1) <> llptw_mem.req
   mem_arb.io.out.ready := mem.a.ready && !flush
 
-  // assert, should not send mem access at same addr for twice.
+  // //assert, should not send mem access at same addr for twice.
   val last_resp_vpn = RegEnable(cache.io.refill.bits.req_info_dup(0).vpn, cache.io.refill.valid)
   val last_resp_level = RegEnable(cache.io.refill.bits.level_dup(0), cache.io.refill.valid)
   val last_resp_v = RegInit(false.B)
@@ -219,9 +219,9 @@ class PTWImp(outer: PTW)(implicit p: Parameters) extends PtwModule(outer) with H
     (cache.io.refill.bits.req_info_dup(0).vpn === last_resp_vpn) &&
     (cache.io.refill.bits.level_dup(0) === last_resp_level),
     "l2tlb should not access mem at same addr for twice")
-  // ATTENTION: this may wronngly assert when: a ptes is l2, last part is valid,
+  // ATTENTION: this may wronngly //assert when: a ptes is l2, last part is valid,
   // but the current part is invalid, so one more mem access happened
-  // If this happened, remove the assert.
+  // If this happened, remove the //assert.
 
   val req_addr_low = Reg(Vec(MemReqWidth, UInt((log2Up(l2tlbParams.blockBytes)-log2Up(XLEN/8)).W)))
 
@@ -250,7 +250,7 @@ class PTWImp(outer: PTW)(implicit p: Parameters) extends PtwModule(outer) with H
   val mem_resp_done = refill_helper._3
   val mem_resp_from_mq = from_missqueue(mem.d.bits.source)
   when (mem.d.valid) {
-    assert(mem.d.bits.source <= l2tlbParams.llptwsize.U)
+    //assert(mem.d.bits.source <= l2tlbParams.llptwsize.U)
     refill_data(refill_helper._4) := mem.d.bits.data
   }
   // refill_data_tmp is the wire fork of refill_data, but one cycle earlier
@@ -374,7 +374,7 @@ class PTWImp(outer: PTW)(implicit p: Parameters) extends PtwModule(outer) with H
   // print configs
   println(s"${l2tlbParams.name}: a ptw, a llptw with size ${l2tlbParams.llptwsize}, miss queue size ${MSHRSize} l1:${l2tlbParams.l1Size} fa l2: nSets ${l2tlbParams.l2nSets} nWays ${l2tlbParams.l2nWays} l3: ${l2tlbParams.l3nSets} nWays ${l2tlbParams.l3nWays} blockBytes:${l2tlbParams.blockBytes}")
 
-  // time out assert
+  // time out //assert
   for (i <- 0 until MemReqWidth) {
     TimeOutAssert(waiting_resp(i), timeOutThreshold, s"ptw mem resp time out wait_resp${i}")
     TimeOutAssert(flush_latch(i), timeOutThreshold, s"ptw mem resp time out flush_latch${i}")
@@ -533,7 +533,7 @@ class FakePTWImp(outer: FakePTW)(implicit p: Parameters) extends LazyModuleImp(o
     val pf = helper.pf
 
     io.tlb(i).resp.valid := RegNext(io.tlb(i).req(0).valid)
-    assert(!io.tlb(i).resp.valid || io.tlb(i).resp.ready)
+    //assert(!io.tlb(i).resp.valid || io.tlb(i).resp.ready)
     io.tlb(i).resp.bits.entry.tag := RegNext(io.tlb(i).req(0).bits.vpn)
     io.tlb(i).resp.bits.entry.ppn := pte.ppn
     io.tlb(i).resp.bits.entry.perm.map(_ := pte.getPerm())

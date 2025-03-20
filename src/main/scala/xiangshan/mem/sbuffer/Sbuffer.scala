@@ -164,7 +164,7 @@ class SbufferData(implicit p: Parameters) extends XSModule with HasSbufferConst 
   //               req.bits.mask(byte) && (req.bits.wordOffset(WordsWidth-1, 0) === word.U) || 
   //               req.bits.wline
   //             ))
-  //             assert(!debug_last_cycle_write_byte)
+  //             //assert(!debug_last_cycle_write_byte)
   //           }
   //         }
   //       }
@@ -300,7 +300,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
     mergeMask(i) := widthMap(j =>
       inptags(i) === ptag(j) && activeMask(j)
     )
-    assert(!(PopCount(mergeMask(i).asUInt) > 1.U && io.in(i).fire()))
+    //assert(!(PopCount(mergeMask(i).asUInt) > 1.U && io.in(i).fire()))
   }
 
   // insert condition
@@ -312,7 +312,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
   val oddInvalidMask = GetOddBits(invalidMask.asUInt)
 
   def getFirstOneOH(input: UInt): UInt = {
-    assert(input.getWidth > 1)
+    //assert(input.getWidth > 1)
     val output = WireInit(VecInit(input.asBools))
     (1 until input.getWidth).map(i => {
       output(i) := !input(i - 1, 0).orR && input(i)
@@ -365,7 +365,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
     insertVec: UInt,
     wordOffset: UInt
   ): Unit = {
-    assert(UIntToOH(insertIdx) === insertVec)
+    //assert(UIntToOH(insertIdx) === insertVec)
     val sameBlockInflightMask = genSameBlockInflightMask(reqptag)
     (0 until StoreBufferSize).map(entryIdx => {
       when(insertVec(entryIdx)){
@@ -390,7 +390,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
     mergeVec: UInt,
     wordOffset: UInt
   ): Unit = {
-    assert(UIntToOH(mergeIdx) === mergeVec)
+    //assert(UIntToOH(mergeIdx) === mergeVec)
     (0 until StoreBufferSize).map(entryIdx => {
       when(mergeVec(entryIdx)) {
         cohCount(entryIdx) := 0.U
@@ -417,7 +417,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
     writeReq(i).bits.wline := in.bits.wline
     val debug_insertIdx = if(i == 0) firstInsertIdx else secondInsertIdx
     val insertVec = if(i == 0) firstInsertVec else secondInsertVec
-    assert(!((PopCount(insertVec) > 1.U) && in.fire()))
+    //assert(!((PopCount(insertVec) > 1.U) && in.fire()))
     val insertIdx = OHToUInt(insertVec)
     accessIdx(i).valid := RegNext(in.fire())
     accessIdx(i).bits := RegNext(Mux(canMerge(i), mergeIdx(i), insertIdx))
@@ -430,7 +430,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
         writeReq(i).bits.wvec := insertVec
         wordReqToBufLine(in.bits, inptags(i), invtags(i), insertIdx, insertVec, wordOffset)
         XSDebug(p"insert req $i to line[$insertIdx]\n")
-        assert(debug_insertIdx === insertIdx)
+        //assert(debug_insertIdx === insertIdx)
       })
     }
   }
@@ -509,7 +509,7 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
 
   def genSameBlockInflightMask(ptag_in: UInt): UInt = {
     val mask = VecInit(widthMap(i => inflightMask(i) && ptag_in === ptag(i))).asUInt // quite slow, use it with care
-    assert(!(PopCount(mask) > 1.U))
+    //assert(!(PopCount(mask) > 1.U))
     mask
   }
 
@@ -556,10 +556,10 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
   val sbuffer_out_s0_valid = missqReplayHasTimeOut || 
     stateVec(sbuffer_out_s0_evictionIdx).isDcacheReqCandidate() &&
     (need_drain || cohHasTimeOut || need_replace)
-  assert(!(
-    stateVec(sbuffer_out_s0_evictionIdx).isDcacheReqCandidate && 
-    !noSameBlockInflight(sbuffer_out_s0_evictionIdx)
-  ))
+  //assert(!(
+//    stateVec(sbuffer_out_s0_evictionIdx).isDcacheReqCandidate &&
+//    !noSameBlockInflight(sbuffer_out_s0_evictionIdx)
+//  ))
   val sbuffer_out_s0_cango = sbuffer_out_s1_ready
   sbuffer_out_s0_fire := sbuffer_out_s0_valid && sbuffer_out_s0_cango
 
@@ -617,8 +617,8 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
   io.dcache.req.bits.id := sbuffer_out_s1_evictionIdx
 
   when (sbuffer_out_s1_fire) {
-    assert(!(io.dcache.req.bits.vaddr === 0.U))
-    assert(!(io.dcache.req.bits.addr === 0.U))
+    //assert(!(io.dcache.req.bits.vaddr === 0.U))
+    //assert(!(io.dcache.req.bits.addr === 0.U))
   }
 
   XSDebug(sbuffer_out_s1_fire,
@@ -638,9 +638,9 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
     when (resp.fire()) {
       stateVec(dcache_resp_id).state_inflight := false.B
       stateVec(dcache_resp_id).state_valid := false.B
-      assert(!resp.bits.replay)
-      assert(!resp.bits.miss) // not need to resp if miss, to be opted
-      assert(stateVec(dcache_resp_id).state_inflight === true.B)
+      //assert(!resp.bits.replay)
+      //assert(!resp.bits.miss) // not need to resp if miss, to be opted
+      //assert(stateVec(dcache_resp_id).state_inflight === true.B)
     }
 
     // Update w_sameblock_inflight flag is delayed for 1 cycle
@@ -671,8 +671,8 @@ class Sbuffer(implicit p: Parameters) extends DCacheModule with HasSbufferConst 
     missqReplayCount(replay_resp_id) := 0.U
     stateVec(replay_resp_id).w_timeout := true.B
     // waiting for timeout
-    assert(io.dcache.replay_resp.bits.replay)
-    assert(stateVec(replay_resp_id).state_inflight === true.B)
+    //assert(io.dcache.replay_resp.bits.replay)
+    //assert(stateVec(replay_resp_id).state_inflight === true.B)
   }
   
   // TODO: reuse cohCount

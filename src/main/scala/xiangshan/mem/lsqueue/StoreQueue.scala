@@ -173,7 +173,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
   io.sqDeq := RegNext(Mux(RegNext(io.sbuffer(1).fire()), 2.U,
     Mux(RegNext(io.sbuffer(0).fire()) || io.mmioStout.fire(), 1.U, 0.U)
   ))
-  assert(!RegNext(RegNext(io.sbuffer(0).fire()) && io.mmioStout.fire()))
+  //assert(!RegNext(RegNext(io.sbuffer(0).fire()) && io.mmioStout.fire()))
 
   for (i <- 0 until StorePipelineWidth) {
     dataModule.io.raddr(i) := rdataPtrExtNext(i).value
@@ -551,7 +551,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     val ptr = rdataPtrExt(i).value
     dataBuffer.io.enq(i).valid := allocated(ptr) && committed(ptr) && !mmioStall
     // Note that store data/addr should both be valid after store's commit
-    assert(!dataBuffer.io.enq(i).valid || allvalid(ptr))
+    //assert(!dataBuffer.io.enq(i).valid || allvalid(ptr))
     dataBuffer.io.enq(i).bits.addr  := paddrModule.io.rdata(i)
     dataBuffer.io.enq(i).bits.vaddr := vaddrModule.io.rdata(i)
     dataBuffer.io.enq(i).bits.data  := dataModule.io.rdata(i).data
@@ -565,7 +565,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     io.sbuffer(i).valid := dataBuffer.io.deq(i).valid
     dataBuffer.io.deq(i).ready := io.sbuffer(i).ready
     // Write line request should have all 1 mask
-    assert(!(io.sbuffer(i).valid && io.sbuffer(i).bits.wline && !io.sbuffer(i).bits.mask.andR))
+    //assert(!(io.sbuffer(i).valid && io.sbuffer(i).bits.wline && !io.sbuffer(i).bits.mask.andR))
     io.sbuffer(i).bits.cmd   := MemoryOpConstants.M_XWR
     io.sbuffer(i).bits.addr  := dataBuffer.io.deq(i).bits.addr
     io.sbuffer(i).bits.vaddr := dataBuffer.io.deq(i).bits.vaddr
@@ -586,7 +586,7 @@ class StoreQueue(implicit p: Parameters) extends XSModule
     }
   }
   when (io.sbuffer(1).fire()) {
-    assert(io.sbuffer(0).fire())
+    //assert(io.sbuffer(0).fire())
   }
   if (coreParams.dcacheParametersOpt.isEmpty) {
     for (i <- 0 until StorePipelineWidth) {

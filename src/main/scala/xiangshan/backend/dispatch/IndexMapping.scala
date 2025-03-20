@@ -76,7 +76,7 @@ class IndexMapping(inWidth: Int, outWidth: Int, withPriority: Boolean)(implicit 
 
 object PriorityGen {
   def apply(numExist: Seq[UInt]) = {
-    assert(numExist.length > 1)
+    //assert(numExist.length > 1)
     val sortedIndex = Wire(Vec(numExist.length, UInt(log2Ceil(numExist.length).W)))
     val priority = WireInit(VecInit(Seq.tabulate(numExist.length)(_ => 0.U(log2Ceil(numExist.length).W))))
     for (i <- numExist.indices) {

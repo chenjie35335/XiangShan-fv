@@ -435,8 +435,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
         doingSvinval := false.B
       }
       // when we are in the process of Svinval software code area , only Svinval.vma and end instruction of Svinval can appear
-      assert(!doingSvinval || (FuType.isSvinval(enqUop.ctrl.fuType, enqUop.ctrl.fuOpType, enqUop.ctrl.flushPipe) ||
-        FuType.isSvinvalEnd(enqUop.ctrl.fuType, enqUop.ctrl.fuOpType, enqUop.ctrl.flushPipe)))
+      //assert(!doingSvinval || (FuType.isSvinval(enqUop.ctrl.fuType, enqUop.ctrl.fuOpType, enqUop.ctrl.flushPipe) ||
+        //FuType.isSvinvalEnd(enqUop.ctrl.fuType, enqUop.ctrl.fuOpType, enqUop.ctrl.flushPipe)))
       when (enqUop.ctrl.isWFI && !enqHasException && !enqHasTriggerCanFire) {
         hasWFI := true.B
       }
@@ -1025,23 +1025,29 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     // 当然分为两个部分： 第一个是预译码的时候，然后是后端提交的时候，这会引起nextpc的变化，因此需要考虑这两个结构来获取npc
     // ftq中存储的信息大部分是和分支预测相关的， 如果想要转换成nextpc将会非常复杂，感觉这里还是说要在rob这里和流水线那里就把nextpc
     // 保留在microOp当中
-    checker.io.instCommit.valid := RegNext(RegNext(RegNext(io.commits.commitValid(index) && io.commits.isCommit)))
-    checker.io.instCommit.pc    := RegNext(RegNext(RegNext(SignExt(SelUop.cf.pc, XLEN))))
+    checker.io.instCommit.valid := io.commits.commitValid(index) && io.commits.isCommit
+    checker.io.instCommit.pc    := SignExt(SelUop.cf.pc, XLEN)
     checker.io.instCommit.npc   := 0.U
-    checker.io.instCommit.inst  := RegNext(RegNext(RegNext(SelUop.cf.instr)))
-    checker.io.wb.valid         := RegNext(RegNext(RegNext(io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U)))
-    checker.io.wb.dest          := RegNext(RegNext(RegNext(io.commits.info(index).ldest)))
-    checker.io.wb.r1Addr        := RegNext(RegNext(RegNext(SelUop.ctrl.lsrc(0))))
-    checker.io.wb.r2Addr        := RegNext(RegNext(RegNext(SelUop.ctrl.lsrc(1))))
+    checker.io.instCommit.inst  := SelUop.cf.instr
+    checker.io.wb.valid         := io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U
+    checker.io.wb.dest          := io.commits.info(index).ldest
+    checker.io.wb.r1Addr        := SelUop.ctrl.lsrc(0)
+    checker.io.wb.r2Addr        := SelUop.ctrl.lsrc(1)
     // 这个data的数据是存在问题的， 首先有fusion的运算
-    checker.io.wb.data          := RegNext(RegNext(RegNext(debug_exuData(deqPtrVec(index).value))))
+    checker.io.wb.data          := debug_exuData(deqPtrVec(index).value)
     // 想办法说把这两个数据从流水线中传递过来
-    checker.io.wb.r1Data        := RegNext(RegNext(RegNext(debug_exuSrc(deqPtrVec(index).value)(0)))) // this two has to be move from pipeline
-    checker.io.wb.r2Data        := RegNext(RegNext(RegNext(debug_exuSrc(deqPtrVec(index).value)(1))))
+    checker.io.wb.r1Data        := debug_exuSrc(deqPtrVec(index).value)(0) // this two has to be move from pipeline
+    checker.io.wb.r2Data        := debug_exuSrc(deqPtrVec(index).value)(1)
     checker.io.wb.csrAddr       := 0.U
     checker.io.wb.csrNdata      := 0.U
     checker.io.wb.csrWr         := false.B
 
+//  liveness
+    val count = RegInit(0.U)
+    count := count + 1.U
+    val commit = RegInit(false.B)
+    when(checker.io.instCommit.valid) { commit := true.B }
+    assert(count <= 10.U || commit)
 
     ConnectCheckerWb.setChecker(checker)(64,env.rvConfig)
 

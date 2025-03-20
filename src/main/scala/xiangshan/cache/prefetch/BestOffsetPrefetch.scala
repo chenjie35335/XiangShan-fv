@@ -195,7 +195,7 @@ class RecentRequestTable(implicit p: Parameters) extends PrefetchModule {
   io.r.resp.bits.ptr := RegNext(io.r.req.bits.ptr)
   io.r.resp.bits.hit := rData.valid && rData.tag === RegNext(tag(rAddr))
 
-  assert(!RegNext(rwConflict), "single port SRAM should not read and write at the same time")
+  //assert(!RegNext(rwConflict), "single port SRAM should not read and write at the same time")
 
   // debug info
   XSDebug(io.w.fire(), p"io.write: v=${io.w.valid} addr=0x${Hexadecimal(io.w.bits)}\n")

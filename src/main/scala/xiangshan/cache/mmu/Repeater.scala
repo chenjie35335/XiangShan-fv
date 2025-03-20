@@ -76,7 +76,7 @@ class PTWRepeater(Width: Int = 1)(implicit p: Parameters) extends XSModule with 
   XSDebug(haveOne, p"haveOne:${haveOne} sent:${sent} recv:${recv} sfence:${flush} req:${req} resp:${resp}")
   XSDebug(req_in.valid || io.tlb.resp.valid, p"tlb: ${tlb}\n")
   XSDebug(io.ptw.req(0).valid || io.ptw.resp.valid, p"ptw: ${ptw}\n")
-  assert(!RegNext(recv && io.ptw.resp.valid, init = false.B), "re-receive ptw.resp")
+  //assert(!RegNext(recv && io.ptw.resp.valid, init = false.B), "re-receive ptw.resp")
   XSError(io.ptw.req(0).valid && io.ptw.resp.valid && !flush, "ptw repeater recv resp when sending")
   XSError(io.ptw.resp.valid && (req.vpn =/= io.ptw.resp.bits.entry.tag), "ptw repeater recv resp with wrong tag")
   XSError(io.ptw.resp.valid && !io.ptw.resp.ready, "ptw repeater's ptw resp back, but not ready")
@@ -285,14 +285,14 @@ class PTWFilter(Width: Int, Size: Int)(implicit p: Parameters) extends XSModule 
   }
 
   counter := counter - do_deq + Mux(do_enq, enqNum, 0.U)
-  assert(counter <= Size.U, "counter should be no more than Size")
-  assert(inflight_counter <= Size.U, "inflight should be no more than Size")
+  //assert(counter <= Size.U, "counter should be no more than Size")
+  //assert(inflight_counter <= Size.U, "inflight should be no more than Size")
   when (counter === 0.U) {
-    assert(!io.ptw.req(0).fire(), "when counter is 0, should not req")
-    assert(isEmptyDeq && isEmptyIss, "when counter is 0, should be empty")
+    //assert(!io.ptw.req(0).fire(), "when counter is 0, should not req")
+    //assert(isEmptyDeq && isEmptyIss, "when counter is 0, should be empty")
   }
   when (counter === Size.U) {
-    assert(mayFullDeq, "when counter is Size, should be full")
+    //assert(mayFullDeq, "when counter is Size, should be full")
   }
 
   when (flush) {

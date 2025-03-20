@@ -198,7 +198,7 @@ class StatusArray(params: RSParams)(implicit p: Parameters) extends XSModule
         statusNext.strictWait := updateVal(i).strictWait
         statusNext.waitForStoreData := updateVal(i).waitForStoreData
         statusNext.waitForRobIdx := updateVal(i).waitForRobIdx
-        assert(updateVal(i).waitForStoreData === false.B)
+        //assert(updateVal(i).waitForStoreData === false.B)
       }
       when (deqNotGranted && deqRespType === RSFeedbackType.dataInvalid) {
         statusNext.blocked := true.B

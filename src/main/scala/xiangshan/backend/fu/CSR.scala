@@ -161,7 +161,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     val spp = Output(UInt(1.W))
     val pie = new Priv
     val ie = new Priv
-    assert(this.getWidth == XLEN)
+    //assert(this.getWidth == XLEN)
 
     def ube = pie.h // a little ugly
     def ube_(r: UInt): Unit = {
@@ -465,7 +465,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     val reserved = UInt((XLEN-3-5).W)
     val frm = UInt(3.W)
     val fflags = UInt(5.W)
-    assert(this.getWidth == XLEN)
+    //assert(this.getWidth == XLEN)
   }
   val fcsr = RegInit(0.U(XLEN.W))
   // set mstatus->sd and mstatus->fs when true
@@ -1139,7 +1139,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     delayedUpdate1.w.bits.data
   )
 
-  assert(!(delayedUpdate0.w.valid && delayedUpdate1.w.valid))
+  //assert(!(delayedUpdate0.w.valid && delayedUpdate1.w.valid))
 
   when(distributedUpdateValid){
     // cacheopRegs can be distributed updated

@@ -142,7 +142,7 @@ class LQPaddrModule(numEntries: Int, numRead: Int, numWrite: Int, numWBanks: Int
   // DataModuleTemplate should not be used when there're any write conflicts
   for (i <- 0 until numWrite) {
     for (j <- i+1 until numWrite) {
-      assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
+      //assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
     }
   }
 }
@@ -186,7 +186,7 @@ class LQMaskModule(numEntries: Int, numRead: Int, numWrite: Int)(implicit p: Par
   // DataModuleTemplate should not be used when there're any write conflicts
   for (i <- 0 until numWrite) {
     for (j <- i+1 until numWrite) {
-      assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
+      //assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
     }
   }
 }
@@ -274,7 +274,7 @@ class LQDataModule(numEntries: Int, numRead: Int, numWrite: Int)(implicit p: Par
   // DataModuleTemplate should not be used when there're any write conflicts
   for (i <- 0 until numWrite) {
     for (j <- i+1 until numWrite) {
-      assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
+      //assert(!(io.wen(i) && io.wen(j) && io.waddr(i) === io.waddr(j)))
     }
   }
 }

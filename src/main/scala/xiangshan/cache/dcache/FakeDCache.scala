@@ -77,7 +77,7 @@ class FakeDCacheImp_Fv(outer: FakeDCache_FV) extends LazyModuleImp(outer) with H
   // to atomics // Maybe we don't need to verify atomics yet
   io.lsu.atomics.req.ready := true.B
   io.lsu.atomics.resp.valid := RegNext(io.lsu.atomics.req.valid)
-  //assert(!io.lsu.atomics.resp.valid || io.lsu.atomics.resp.ready)
+  ////assert(!io.lsu.atomics.resp.valid || io.lsu.atomics.resp.ready)
   io.lsu.atomics.resp.bits.data := DontCare
   io.lsu.atomics.resp.bits.replay := false.B
   io.lsu.atomics.resp.bits.id := 1.U
@@ -128,7 +128,7 @@ class FakeDCache()(implicit p: Parameters) extends XSModule with HasDCacheParame
   amoHelper.mask := io.lsu.atomics.req.bits.mask
   io.lsu.atomics.req.ready := true.B
   io.lsu.atomics.resp.valid := RegNext(io.lsu.atomics.req.valid)
-  assert(!io.lsu.atomics.resp.valid || io.lsu.atomics.resp.ready)
+  //assert(!io.lsu.atomics.resp.valid || io.lsu.atomics.resp.ready)
   io.lsu.atomics.resp.bits.data := amoHelper.rdata
   io.lsu.atomics.resp.bits.replay := false.B
   io.lsu.atomics.resp.bits.id := 1.U

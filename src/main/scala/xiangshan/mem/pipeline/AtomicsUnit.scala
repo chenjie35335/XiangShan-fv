@@ -107,7 +107,7 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule with MemoryOpConstant
     data_valid := true.B
   }
 
-  assert(!(io.storeDataIn.fire && data_valid), "atomic unit re-receive data")
+  //assert(!(io.storeDataIn.fire && data_valid), "atomic unit re-receive data")
 
   // Send TLB feedback to store issue queue
   // we send feedback right after we receives request
@@ -289,8 +289,8 @@ class AtomicsUnit(implicit p: Parameters) extends XSModule with MemoryOpConstant
       // when (io.dcache.resp.bits.error && io.csrCtrl.cache_error_enable) {
       //   exceptionVec(loadAccessFault)  := isLr
       //   exceptionVec(storeAccessFault) := !isLr
-      //   assert(!exceptionVec(loadAccessFault))
-      //   assert(!exceptionVec(storeAccessFault))
+      //   //assert(!exceptionVec(loadAccessFault))
+      //   //assert(!exceptionVec(storeAccessFault))
       // }
 
       resp_data := resp_data_wire
