@@ -78,7 +78,7 @@ $(TOP_V): $(SCALA_FILE)
 		--infer-rw --repl-seq-mem -c:$(FPGATOP):-o:$(@D)/$(@F).conf \
 		--gen-mem-verilog full --num-cores $(NUM_CORES)             \
 		$(RELEASE_ARGS)
-	sed -i -e 's/_\(aw\|ar\|w\|r\|b\)_\(\|bits_\)/_\1/g' $@
+	# sed -i -e 's/_\(aw\|ar\|w\|r\|b\)_\(\|bits_\)/_\1/g' $@
 	# @git log -n 1 >> .__head__
 	# @git diff >> .__diff__
 	# @sed -i 's/^/\/\// ' .__head__

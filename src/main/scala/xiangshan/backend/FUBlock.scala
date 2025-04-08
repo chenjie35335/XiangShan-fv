@@ -21,7 +21,7 @@ import chisel3._
 import chisel3.experimental.hierarchy.Instance
 import chisel3.util._
 import utils._
-import xiangshan._
+import xiangshan.{CustomCSRCtrlIO, _}
 import xiangshan.backend.exu._
 import xiangshan.backend.fu.CSRFileIO
 import xiangshan.backend.fu.fpu.FMAMidResultIO
@@ -85,8 +85,8 @@ class FUBlock(configs: Seq[(ExuConfig, Int)])(implicit p: Parameters) extends XS
       exu.csrio.get <> io.extra.csrio.get
       exu.csrio.get.perf <> RegNext(io.extra.csrio.get.perf)
       // RegNext customCtrl for better timing
-      io.extra.csrio.get.customCtrl := RegNext(RegNext(exu.csrio.get.customCtrl))
-      io.extra.csrio.get.tlb := RegNext(RegNext(exu.csrio.get.tlb))
+      io.extra.csrio.get.customCtrl := RegNext(RegNext(exu.csrio.get.customCtrl,0.U.asTypeOf(new CustomCSRCtrlIO)),0.U.asTypeOf(new CustomCSRCtrlIO))
+      io.extra.csrio.get.tlb := RegNext(RegNext(exu.csrio.get.tlb,0.U.asTypeOf(new TlbCsrBundle)),0.U.asTypeOf(new TlbCsrBundle))
       // RegNext csrUpdate
       exu.csrio.get.distributedUpdate := RegNext(io.extra.csrio.get.distributedUpdate)
     }

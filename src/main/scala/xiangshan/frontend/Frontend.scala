@@ -21,7 +21,7 @@ import chisel3.util._
 import chisel3.util.experimental.BoringUtils
 import device.EnableFormal
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import rvspeccore.checker.RVI
+import rvspeccore.checker.{RVB, RVI, RVM}
 import utils._
 import xiangshan._
 import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
@@ -58,6 +58,28 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
       }
     }
   })
+  // pc
+  val startaddr = RegInit(io.reset_vector)
+  startaddr := startaddr + (4 * 4).U
+  val bpBranch = Wire(new BranchPredictionBundle)
+  bpBranch := DontCare
+  for(i <- 0 until 5) {
+    bpBranch.valid(i) := true.B
+    bpBranch.pc(i) := startaddr
+  }
+  val Component = Wire(new Ftq_RF_Components())
+  Component.fromBranchPrediction(bpBranch)
+  val PcMemWen = WireInit(false.B)
+  // fake ftq. this will replace the pc register vector
+  val ifPtr, wbPtr = RegInit(FtqPtr(false.B, 0.U)) // 这个相当于说是头指针和尾指针，相当于一个环形队列
+
+  PcMemWen := true.B
+  val PcMem = RegInit(VecInit(Seq.fill(FtqSize)(0.U.asTypeOf(new Ftq_RF_Components()))))
+  when(PcMemWen) {
+    PcMem(wbPtr.value) := Component
+    wbPtr := wbPtr + 1.U
+  }
+  //
   // never launch ptw request
   io.ptw := DontCare
   io.ptw.req.foreach(_.valid := false.B)
@@ -72,40 +94,50 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
   io.csrUpdate.w.bits.data := 0.U
   io.csrUpdate.w.bits.addr := 0.U
   io.error := DontCare
-  // the backend interface 对于每一项， 两边均接受之后就可以传递数据了
-  val pc = RegInit(VecInit(Seq.tabulate(DecodeWidth)(i =>
-    (io.reset_vector + (i * 4).U).asTypeOf(UInt(VAddrBits.W))
-  )))
+  //val pc = VecInit((0 until FetchWidth).map(i => FetchComp.startAddr + (i * 4).U)) // 这里我暂时不想考虑压缩指令
   val instr = WireInit(VecInit(Seq.fill(DecodeWidth)(0.U(XLEN.W))))
+  val decodePtr = RegInit(0.U(log2Up(FetchWidth)))
+  decodePtr := decodePtr + 2.U
+  when(decodePtr === (FetchWidth - 2).U) {
+    ifPtr := ifPtr + 1.U
+  }
+  val FetchComp = PcMem(ifPtr.value)
   BoringUtils.addSink(instr, "formalInstr")
+  // the backend interface 对于每一项， 两边均接受之后就可以传递数据了
+  val pc = RegInit(VecInit(Seq.fill(FetchWidth)(0.U(VAddrBits.W))))
+  for(i <- 0 until FetchWidth) {
+    pc(i) := FetchComp.startAddr + (i * 4).U
+  }
+  // fake inst buffer 这里定义一个简易的instbuffer, 主要存储pc
   for(i <- 0 until DecodeWidth) {
     io.backend.cfVec(i).valid := true.B
-    when(io.backend.cfVec(i).fire) {
-      if(env.EnableFormal) {
-        implicit val checker_xlen = 64
-        assume(RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr))
-      }
-      io.backend.cfVec(i).bits.instr        := instr(i)
-      io.backend.cfVec(i).bits.pc           := pc(i)
-      io.backend.cfVec(i).bits.foldpc       := XORFold(pc(i)(VAddrBits-1,1), MemPredPCWidth)
-      io.backend.cfVec(i).bits.exceptionVec := 0.U.asTypeOf(ExceptionVec())
-      io.backend.cfVec(i).bits.pd.brType := BrType.notCFI
-      io.backend.cfVec(i).bits.pd.isRet  := false.B
-      io.backend.cfVec(i).bits.pd.isRVC  := false.B
-      io.backend.cfVec(i).bits.pd.isCall := false.B
-      io.backend.cfVec(i).bits.pred_taken := true.B
-      io.backend.cfVec(i).bits.crossPageIPFFix := false.B
-      io.backend.cfVec(i).bits.ftqPtr := DontCare
-      io.backend.cfVec(i).bits.ftqOffset := DontCare
-      pc(i) := pc(i) + (4 * DecodeWidth).U
-      //ftq 相关的还是需要考虑，这部分先放在这里
-      io.backend.fromFtq.pc_mem_wen := false.B
-      io.backend.fromFtq.pc_mem_waddr := 0.U
-      io.backend.fromFtq.pc_mem_wdata := 0.U.asTypeOf(new Ftq_RF_Components)
-      io.backend.fromFtq.newest_entry_ptr := DontCare
-      io.backend.fromFtq.newest_entry_target := DontCare
+    if (env.EnableFormal) {
+      implicit val checker_xlen = 64
+      assume(RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr) ||
+        RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) || RVB.zbc(io.backend.cfVec(i).bits.instr) ||
+        RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr)
+      )
+      //|| RVM.mulOp(io.backend.cfVec(i).bits.instr) || RVM.divOp(io.backend.cfVec(i).bits.instr))
     }
+    io.backend.cfVec(i).bits.instr := instr(i)
+    io.backend.cfVec(i).bits.pc := pc(decodePtr + i.U) //pc(i)
+    io.backend.cfVec(i).bits.foldpc := XORFold(pc(decodePtr + i.U), MemPredPCWidth)
+    io.backend.cfVec(i).bits.exceptionVec := 0.U.asTypeOf(ExceptionVec())
+    io.backend.cfVec(i).bits.pd.brType := BrType.notCFI
+    io.backend.cfVec(i).bits.pd.isRet := false.B
+    io.backend.cfVec(i).bits.pd.isRVC := false.B
+    io.backend.cfVec(i).bits.pd.isCall := false.B
+    io.backend.cfVec(i).bits.pred_taken := true.B
+    io.backend.cfVec(i).bits.crossPageIPFFix := false.B
+    io.backend.cfVec(i).bits.ftqPtr := ifPtr
+    io.backend.cfVec(i).bits.ftqOffset := decodePtr + i.U
   }
+  //ftq 相关的还是需要考虑，这部分先放在这里
+  io.backend.fromFtq.pc_mem_wen := PcMemWen
+  io.backend.fromFtq.pc_mem_waddr := wbPtr.value
+  io.backend.fromFtq.pc_mem_wdata := Component
+  io.backend.fromFtq.newest_entry_ptr := DontCare
+  io.backend.fromFtq.newest_entry_target := DontCare
   //然后就是对于FTQ的前后端的同步问题， 而且这个是比较麻烦的就是说需要几个周期进行预取
   // 所以说这个backend的valid信号可能需要修改
 

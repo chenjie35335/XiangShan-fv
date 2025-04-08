@@ -170,12 +170,12 @@ class WbArbiterImp(outer: WbArbiter)(implicit p: Parameters) extends LazyModuleI
       require(!hasFastUopOut || !outer.needRegNext(i))
       if (hasFastUopOut) {
         // When hasFastUopOut, only uop comes at the same cycle with valid.
-        out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect))
-        out.bits.uop := RegEnable(in.bits.uop, in.valid)
+        out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect),false.B)
+        out.bits.uop := RegEnable(in.bits.uop, 0.U.asTypeOf(new MicroOp()),in.valid)
       }
       if (outer.needRegNext(i)) {
-        out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect))
-        out.bits := RegEnable(in.bits, in.valid)
+        out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect),false.B)
+        out.bits := RegEnable(in.bits, 0.U.asTypeOf(new ExuOutput()),in.valid)
       }
       in.ready := true.B
   }
@@ -365,8 +365,8 @@ class Wb2Ctrl(configs: Seq[ExuConfig])(implicit p: Parameters) extends LazyModul
       out.valid := in.fire
       out.bits := in.bits
       if (config.hasFastUopOut || config.hasLoadError) {
-        out.valid := RegNext(in.fire && !in.bits.uop.robIdx.needFlush(redirect))
-        out.bits.uop := RegEnable(in.bits.uop, in.fire)
+        out.valid := RegNext(in.fire && !in.bits.uop.robIdx.needFlush(redirect),false.B)
+        out.bits.uop := RegEnable(in.bits.uop, 0.U.asTypeOf(new MicroOp),in.fire)
       }
     }
 
@@ -377,7 +377,7 @@ class Wb2Ctrl(configs: Seq[ExuConfig])(implicit p: Parameters) extends LazyModul
       ){
         // overwrite load exception writeback
         out.bits.uop.cf.exceptionVec(loadAccessFault) := delayed_error ||
-          RegEnable(in.bits.uop.cf.exceptionVec(loadAccessFault), in.valid)
+          RegEnable(in.bits.uop.cf.exceptionVec(loadAccessFault),false.B, in.valid)
       }
     }
 

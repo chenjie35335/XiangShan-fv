@@ -269,7 +269,7 @@ case class DebugOptions
   EnableFormal: Boolean = true,
   rvConfig: RVConfig = RVConfig(
     XLEN = 64,
-    extensions = "M",
+    extensions = "MCZbaZbbZbcZbsZbkbZbkcZbkx",
     fakeExtensions = "",
     functions = Seq()
   )

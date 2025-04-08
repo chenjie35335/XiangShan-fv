@@ -86,7 +86,7 @@ class DelayN[T <: Data](gen: T, n: Int) extends Module {
   })
   var out = io.in
   for (i <- 0 until n) {
-    out = RegNext(out)
+    out = RegNext(out, 0.U.asTypeOf(gen))
   }
   io.out := out
 }

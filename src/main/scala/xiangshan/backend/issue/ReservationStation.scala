@@ -518,7 +518,7 @@ class ReservationStation(params: RSParams)(implicit p: Parameters) extends XSMod
   s1_out.foreach(_.bits.uop.debugInfo.selectTime := GTimer())
 
   for (i <- 0 until params.numDeq) {
-    s1_out(i).valid := s1_issuePtrOH(i).valid && !s1_out(i).bits.uop.robIdx.needFlush(io.redirect)
+    s1_out(i).valid := s1_issuePtrOH(i).valid && !s1_out(i).bits.uop.robIdx.needFlush(io.redirect) && !reset.asBool
     if (io.feedback.isDefined) {
       // feedbackSlow
       statusArray.io.deqResp(2*i).valid := io.feedback.get(i).feedbackSlow.valid
@@ -770,7 +770,7 @@ class ReservationStation(params: RSParams)(implicit p: Parameters) extends XSMod
       XSPerfAccumulate(s"fma_final_issue_$i", io.deq(i).fire && io.fmaMid.get(i).in.valid)
     }
     s2_deq(i).ready := !s2_deq(i).valid || io.deq(i).ready
-    io.deq(i).valid := s2_deq(i).valid
+    io.deq(i).valid := s2_deq(i).valid & !reset.asBool
     io.deq(i).bits := s2_deq(i).bits
     io.deq(i).bits.uop.debugInfo.issueTime := GTimer()
 

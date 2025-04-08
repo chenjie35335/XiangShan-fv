@@ -184,9 +184,9 @@ class ExceptionGen(implicit p: Parameters) extends XSModule with HasCircularQueu
     val out = ValidIO(new RobExceptionInfo)
     val state = ValidIO(new RobExceptionInfo)
   })
-
+// 给current初始化
   val currentValid = RegInit(false.B)
-  val current = Reg(new RobExceptionInfo)
+  val current = RegInit(0.U.asTypeOf(new RobExceptionInfo))
 
   // orR the exceptionVec
   val lastCycleFlush = RegNext(io.flush)
@@ -1036,8 +1036,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     // 这个data的数据是存在问题的， 首先有fusion的运算
     checker.io.wb.data          := debug_exuData(deqPtrVec(index).value)
     // 想办法说把这两个数据从流水线中传递过来
-    checker.io.wb.r1Data        := debug_exuSrc(deqPtrVec(index).value)(0) // this two has to be move from pipeline
-    checker.io.wb.r2Data        := debug_exuSrc(deqPtrVec(index).value)(1)
+    checker.io.wb.r1Data        := Mux(SelUop.ctrl.srcType(0) === SrcType.reg,debug_exuSrc(deqPtrVec(index).value)(0), 0.U) // this two has to be move from pipeline
+    checker.io.wb.r2Data        := Mux(SelUop.ctrl.srcType(1) === SrcType.reg,debug_exuSrc(deqPtrVec(index).value)(1), 0.U)
     checker.io.wb.csrAddr       := 0.U
     checker.io.wb.csrNdata      := 0.U
     checker.io.wb.csrWr         := false.B

@@ -112,7 +112,7 @@ object PipelineConnect {
     when (isFlush) { valid := false.B }
 
     left.ready := right.ready && !block
-    val data = RegEnable(left.bits, leftFire)
+    val data = RegEnable(left.bits, 0.U.asTypeOf(left.bits) ,leftFire)
     right.bits := data
     right.valid := valid
 

@@ -260,12 +260,12 @@ class CtrlBlockImp(outer: CtrlBlock)(implicit p: Parameters) extends LazyModuleI
     6 + exuParameters.LduCnt, 1, "CtrlPcMem")
   )
   val rob = outer.rob.module
-// 看出来这个
+// 看出来这个退后了一个周期，为什么这么做，比较关键
   pcMem.io.wen.head   := RegNext(io.frontend.fromFtq.pc_mem_wen)
   pcMem.io.waddr.head := RegNext(io.frontend.fromFtq.pc_mem_waddr)
   pcMem.io.wdata.head := RegNext(io.frontend.fromFtq.pc_mem_wdata)
 
-
+// 这个确实是查pc的， 但是flush目前用不上，因此我们可以不用考虑
   pcMem.io.raddr.last := rob.io.flushOut.bits.ftqIdx.value
   val flushPC = pcMem.io.rdata.last.getPc(RegNext(rob.io.flushOut.bits.ftqOffset))
 
@@ -383,7 +383,7 @@ class CtrlBlockImp(outer: CtrlBlock)(implicit p: Parameters) extends LazyModuleI
   for (i <- 0 until RenameWidth) {
     // fusion decoder
     val decodeHasException = io.frontend.cfVec(i).bits.exceptionVec(instrPageFault) || io.frontend.cfVec(i).bits.exceptionVec(instrAccessFault)
-    val disableFusion = decode.io.csrCtrl.singlestep || !decode.io.csrCtrl.fusion_enable
+    val disableFusion = true.B//decode.io.csrCtrl.singlestep || !decode.io.csrCtrl.fusion_enable
     fusionDecoder.io.in(i).valid := io.frontend.cfVec(i).valid && !(decodeHasException || disableFusion)
     fusionDecoder.io.in(i).bits := io.frontend.cfVec(i).bits.instr
     if (i > 0) {
@@ -488,7 +488,7 @@ class CtrlBlockImp(outer: CtrlBlock)(implicit p: Parameters) extends LazyModuleI
   val jalrTargetReadPtr = Mux(pingpong && (exuParameters.AluCnt > 2).B,
     io.dispatch(2).bits.cf.ftqPtr,
     io.dispatch(0).bits.cf.ftqPtr)
-  pcMem.io.raddr(4) := (jalrTargetReadPtr + 1.U).value
+  pcMem.io.raddr(4) := (jalrTargetReadPtr + 1.U).value // 就这个比较复杂，需要考虑到newest_entry_target的问题
   val jalrTargetRead = pcMem.io.rdata(4).startAddr
   val read_from_newest_entry = RegNext(jalrTargetReadPtr) === RegNext(io.frontend.fromFtq.newest_entry_ptr)
   io.jalr_target := Mux(read_from_newest_entry, RegNext(io.frontend.fromFtq.newest_entry_target), jalrTargetRead)

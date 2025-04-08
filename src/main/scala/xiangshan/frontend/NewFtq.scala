@@ -83,7 +83,7 @@ class Ftq_RF_Components(implicit p: Parameters) extends XSBundle with BPUUtils w
     this.nextLineAddr := resp.pc(dupForFtq) + (FetchWidth * 4 * 2).U // may be broken on other configs
     this.isNextMask := VecInit((0 until PredictWidth).map(i =>
       (resp.pc(dupForFtq)(log2Ceil(PredictWidth), 1) +& i.U)(log2Ceil(PredictWidth)).asBool()
-    ))
+    )) // +&是无符号数加法
     this.fallThruError := resp.fallThruError(dupForFtq)
     this
   }
