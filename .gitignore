@@ -129,6 +129,8 @@ local.properties
 *.x86_64
 *.hex
 
+.VSCodeCounter/
+
 # Debug files
 *.dSYM/
 ### SBT template
