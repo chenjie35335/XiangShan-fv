@@ -39,6 +39,7 @@ class ExuWbArbiter(n: Int, hasFastUopOut: Boolean, fastVec: Seq[Boolean])(implic
     val redirectValid = Bool()
     val redirect = new Redirect
     val debug = new DebugBundle
+    val src = Vec(3, UInt(XLEN.W))
   }
   val ctrl_arb = Module(new Arbiter(new ExuCtrl, n))
   val data_arb = Module(new Arbiter(UInt((XLEN+1).W), n))
@@ -65,17 +66,19 @@ class ExuWbArbiter(n: Int, hasFastUopOut: Boolean, fastVec: Seq[Boolean])(implic
   io.out.valid := ctrl_arb.io.out.valid
   //assert(ctrl_arb.io.out.valid === data_arb.io.out.valid)
 
-  if (hasFastUopOut) {
+  if (hasFastUopOut) {// 这个地方意思出错
     val uop = ctrl_arb.io.out.bits.uop
+    val src = ctrl_arb.io.out.bits.src
     io.out.valid := RegNext(ctrl_arb.io.out.valid && !uop.robIdx.needFlush(io.redirect))
     // When hasFastUopOut, only uop comes at the same cycle with valid.
     // Other bits like data, fflags come at the next cycle after valid,
     // and they need to be selected with the fireVec.
-    val dataVec = VecInit(io.in.map(_.bits).zip(fastVec).map{ case (d, f) => if (f) d else RegNext(d) })
+    val dataVec = VecInit(io.in.map(_.bits).zip(fastVec).map{ case (d, f) => if (f) d else RegNext(d) }) //这里不会是问题吧
     val sel = VecInit(io.in.map(_.fire)).asUInt
     io.out.bits := Mux1H(RegNext(sel), dataVec)
     // uop comes at the same cycle with valid and only RegNext is needed.
     io.out.bits.uop := RegEnable(uop, ctrl_arb.io.out.valid)
+    io.out.bits.src := RegEnable(src, ctrl_arb.io.out.valid)
   }
 }
 
@@ -172,6 +175,7 @@ class WbArbiterImp(outer: WbArbiter)(implicit p: Parameters) extends LazyModuleI
         // When hasFastUopOut, only uop comes at the same cycle with valid.
         out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect),false.B)
         out.bits.uop := RegEnable(in.bits.uop, 0.U.asTypeOf(new MicroOp()),in.valid)
+        out.bits.src := RegEnable(in.bits.uop.SrcValue,in.valid)
       }
       if (outer.needRegNext(i)) {
         out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect),false.B)

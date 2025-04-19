@@ -35,7 +35,13 @@ class FakeFrontend()(implicit p: Parameters) extends LazyModule with HasXSParame
 
   lazy val module = new FakeFrontendImp(this)
 }
-
+// 应该这么写
+// 首先有一个newest_entry_ptr和newest_entry_target, 这个东西应该是和写优先相关的东西
+// 在ftq中只有说分支预测和重定向的时候才会使用
+// 这里有一个commit_ptr，这个就比较麻烦，初步判断应该只和分支预测相关
+// 所以说真正重定向是这样的
+// 首先分支预测会写ftq_pc_mem， 其次重定向的时候也会写
+// 然后重定向后修改bpuptr，从而重新开始取指令
 class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with HasXSParameter
   with HasPerfEvents
 {// 接下来需要考虑一下ftq的问题
@@ -58,9 +64,10 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
       }
     }
   })
+  val redirect = io.backend.toFtq.redirect
   // pc
   val startaddr = RegInit(io.reset_vector)
-  startaddr := startaddr + (4 * 4).U
+  startaddr := Mux(redirect.valid, redirect.bits.cfiUpdate.target, startaddr + (4 * 4).U)
   val bpBranch = Wire(new BranchPredictionBundle)
   bpBranch := DontCare
   for(i <- 0 until 5) {
@@ -77,6 +84,10 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
   val PcMem = RegInit(VecInit(Seq.fill(FtqSize)(0.U.asTypeOf(new Ftq_RF_Components()))))
   when(PcMemWen) {
     PcMem(wbPtr.value) := Component
+  }
+  when(redirect.valid) {
+    wbPtr := redirect.bits.ftqIdx + 1.U
+  }.elsewhen(PcMemWen) {
     wbPtr := wbPtr + 1.U
   }
   //
@@ -96,15 +107,17 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
   io.error := DontCare
   //val pc = VecInit((0 until FetchWidth).map(i => FetchComp.startAddr + (i * 4).U)) // 这里我暂时不想考虑压缩指令
   val instr = WireInit(VecInit(Seq.fill(DecodeWidth)(0.U(XLEN.W))))
-  val decodePtr = RegInit(0.U(log2Up(FetchWidth)))
-  decodePtr := decodePtr + 2.U
-  when(decodePtr === (FetchWidth - 2).U) {
+  val decodePtr = RegInit(0.U(log2Up(FetchWidth).W))
+  decodePtr := Mux(redirect.valid, 0.U, decodePtr + 2.U)
+  when(redirect.valid) {
+    ifPtr := redirect.bits.ftqIdx + 1.U
+  }.elsewhen(decodePtr === (FetchWidth - 2).U) {
     ifPtr := ifPtr + 1.U
   }
-  val FetchComp = PcMem(ifPtr.value)
+  val FetchComp = Mux(wbPtr.value === ifPtr.value, Component ,PcMem(ifPtr.value))
   BoringUtils.addSink(instr, "formalInstr")
   // the backend interface 对于每一项， 两边均接受之后就可以传递数据了
-  val pc = RegInit(VecInit(Seq.fill(FetchWidth)(0.U(VAddrBits.W))))
+  val pc = WireInit(VecInit(Seq.fill(FetchWidth)(0.U(VAddrBits.W))))
   for(i <- 0 until FetchWidth) {
     pc(i) := FetchComp.startAddr + (i * 4).U
   }
@@ -113,9 +126,11 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
     io.backend.cfVec(i).valid := true.B
     if (env.EnableFormal) {
       implicit val checker_xlen = 64
-      assume(RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr) ||
-        RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) || RVB.zbc(io.backend.cfVec(i).bits.instr) ||
-        RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr)
+      assume(
+        RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr) ||
+          RVI.control(io.backend.cfVec(i).bits.instr)
+        //RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) || RVB.zbc(io.backend.cfVec(i).bits.instr) ||
+        //RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr)
       )
       //|| RVM.mulOp(io.backend.cfVec(i).bits.instr) || RVM.divOp(io.backend.cfVec(i).bits.instr))
     }
@@ -127,7 +142,7 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
     io.backend.cfVec(i).bits.pd.isRet := false.B
     io.backend.cfVec(i).bits.pd.isRVC := false.B
     io.backend.cfVec(i).bits.pd.isCall := false.B
-    io.backend.cfVec(i).bits.pred_taken := true.B
+    io.backend.cfVec(i).bits.pred_taken := false.B
     io.backend.cfVec(i).bits.crossPageIPFFix := false.B
     io.backend.cfVec(i).bits.ftqPtr := ifPtr
     io.backend.cfVec(i).bits.ftqOffset := decodePtr + i.U
@@ -136,8 +151,8 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
   io.backend.fromFtq.pc_mem_wen := PcMemWen
   io.backend.fromFtq.pc_mem_waddr := wbPtr.value
   io.backend.fromFtq.pc_mem_wdata := Component
-  io.backend.fromFtq.newest_entry_ptr := DontCare
-  io.backend.fromFtq.newest_entry_target := DontCare
+  io.backend.fromFtq.newest_entry_ptr := Mux(redirect.valid, redirect.bits.ftqIdx + 1.U, wbPtr)
+  io.backend.fromFtq.newest_entry_target := Mux(redirect.valid, redirect.bits.cfiUpdate.target, Component.startAddr)
   //然后就是对于FTQ的前后端的同步问题， 而且这个是比较麻烦的就是说需要几个周期进行预取
   // 所以说这个backend的valid信号可能需要修改
 

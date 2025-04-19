@@ -327,6 +327,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   val debug_exuSrc  = Reg(Vec(RobSize, Vec(3, UInt(XLEN.W))))
   val debug_exuData = Reg(Vec(RobSize, UInt(XLEN.W)))//for debug
   val debug_exuDebug = Reg(Vec(RobSize, new DebugBundle))//for debug
+  val debug_npc = Reg(Vec(RobSize, UInt(VAddrBits.W)))
 
   // pointers
   // For enqueue ptr, we don't duplicate it since only enqueue needs it.
@@ -462,6 +463,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(wbIdx).debugInfo.selectTime := wb.bits.uop.debugInfo.selectTime
       debug_microOp(wbIdx).debugInfo.issueTime := wb.bits.uop.debugInfo.issueTime
       debug_microOp(wbIdx).debugInfo.writebackTime := wb.bits.uop.debugInfo.writebackTime
+      debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
 
       val debug_Uop = debug_microOp(wbIdx)
       XSInfo(true.B,
@@ -471,6 +473,11 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       )
     }
   }
+
+  when(io.redirect.valid) {
+    debug_npc(io.redirect.bits.robIdx.value) := io.redirect.bits.cfiUpdate.target
+  }
+
   val writebackNum = PopCount(exuWriteback.map(_.valid))
   XSInfo(writebackNum =/= 0.U, "writebacked %d insts\n", writebackNum)
 
@@ -1013,7 +1020,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   }
 
   if(env.EnableFormal) {
-    val checker = Module(new CheckerWithWB(checkMem = false)(env.rvConfig))
+    val checker = Module(new CheckerWithWB(checkMem = false, enableReg = false, checkNPC = true)(env.rvConfig))
     val index = WireInit(0.U)
     BoringUtils.addSink(index, "formalIndex")
 
@@ -1027,7 +1034,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     // 保留在microOp当中
     checker.io.instCommit.valid := io.commits.commitValid(index) && io.commits.isCommit
     checker.io.instCommit.pc    := SignExt(SelUop.cf.pc, XLEN)
-    checker.io.instCommit.npc   := 0.U
+    checker.io.instCommit.npc   := Mux(io.redirect.valid && io.redirect.bits.robIdx === SelUop.robIdx, io.redirect.bits.cfiUpdate.target, debug_npc(index))
     checker.io.instCommit.inst  := SelUop.cf.instr
     checker.io.wb.valid         := io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U
     checker.io.wb.dest          := io.commits.info(index).ldest

@@ -35,8 +35,8 @@ import xiangshan.mem.{LsqEnqCtrl, LsqEnqIO}
 
 class CtrlToFtqIO(implicit p: Parameters) extends XSBundle {
   def numRedirect = exuParameters.JmpCnt + exuParameters.AluCnt
-  val rob_commits = Vec(CommitWidth, Valid(new RobCommitInfo))
-  val redirect = Valid(new Redirect)
+  val rob_commits = Vec(CommitWidth, Valid(new RobCommitInfo)) // 这个rob_commit是干什么用的
+  val redirect = Valid(new Redirect) // 这个redirect貌似非常重要
 }
 
 class RedirectGenerator(implicit p: Parameters) extends XSModule
