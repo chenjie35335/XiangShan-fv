@@ -327,8 +327,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   val debug_exuSrc  = Reg(Vec(RobSize, Vec(3, UInt(XLEN.W))))
   val debug_exuData = Reg(Vec(RobSize, UInt(XLEN.W)))//for debug
   val debug_exuDebug = Reg(Vec(RobSize, new DebugBundle))//for debug
-  val debug_npc = Reg(Vec(RobSize, UInt(VAddrBits.W)))
-
+  val debug_npc = RegInit(VecInit(Seq.fill(RobSize)(0.U(VAddrBits.W))))
+  val debug_redirect = Reg(Vec(RobSize, Bool()))
   // pointers
   // For enqueue ptr, we don't duplicate it since only enqueue needs it.
   val enqPtrVec = Wire(Vec(RenameWidth, new RobPtr))
@@ -417,6 +417,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(enqIndex).debugInfo.selectTime := timer
       debug_microOp(enqIndex).debugInfo.issueTime := timer
       debug_microOp(enqIndex).debugInfo.writebackTime := timer
+      debug_npc(enqIndex) := enqUop.cf.pc + 4.U
       when (enqUop.ctrl.blockBackward) {
         hasBlockBackward := true.B
       }
@@ -463,7 +464,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(wbIdx).debugInfo.selectTime := wb.bits.uop.debugInfo.selectTime
       debug_microOp(wbIdx).debugInfo.issueTime := wb.bits.uop.debugInfo.issueTime
       debug_microOp(wbIdx).debugInfo.writebackTime := wb.bits.uop.debugInfo.writebackTime
-      debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
+      //debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
 
       val debug_Uop = debug_microOp(wbIdx)
       XSInfo(true.B,
@@ -947,6 +948,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   def ifCommitReg(counter: UInt): UInt = Mux(RegNext(io.commits.isCommit), counter, 0.U)
 
   val commitDebugUop = deqPtrVec.map(_.value).map(debug_microOp(_))
+  val commitDebugNpc = deqPtrVec.map(_.value).map(debug_npc(_))
   XSPerfAccumulate("clock_cycle", 1.U)
   QueuePerf(RobSize, PopCount((0 until RobSize).map(valid(_))), !allowEnqueue)
   XSPerfAccumulate("commitUop", ifCommit(commitCnt))
@@ -1027,14 +1029,18 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     val selectSeq = (0 until CommitWidth).map{
       i => ((index === i.U) -> commitDebugUop(i))
     }
+    val selectNpc = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugNpc(i))
+    }
     val SelUop = MuxCase(0.U.asTypeOf(new MicroOp()), selectSeq)
+    val SelNpc = MuxCase(0.U(VAddrBits.W), selectNpc)
   //首先我们需要考虑的问题是npc怎么弄的问题
     // 当然分为两个部分： 第一个是预译码的时候，然后是后端提交的时候，这会引起nextpc的变化，因此需要考虑这两个结构来获取npc
     // ftq中存储的信息大部分是和分支预测相关的， 如果想要转换成nextpc将会非常复杂，感觉这里还是说要在rob这里和流水线那里就把nextpc
     // 保留在microOp当中
     checker.io.instCommit.valid := io.commits.commitValid(index) && io.commits.isCommit
     checker.io.instCommit.pc    := SignExt(SelUop.cf.pc, XLEN)
-    checker.io.instCommit.npc   := Mux(io.redirect.valid && io.redirect.bits.robIdx === SelUop.robIdx, io.redirect.bits.cfiUpdate.target, debug_npc(index))
+    checker.io.instCommit.npc   := Mux(io.redirect.valid && io.redirect.bits.robIdx === SelUop.robIdx, io.redirect.bits.cfiUpdate.target, SelNpc)
     checker.io.instCommit.inst  := SelUop.cf.instr
     checker.io.wb.valid         := io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U
     checker.io.wb.dest          := io.commits.info(index).ldest

@@ -121,6 +121,7 @@ class RedirectGenerator(implicit p: Parameters) extends XSModule
       snpc
     )
   )
+  assume(target(1,0) === 0.U)
 
   val stage2CfiUpdate = io.stage2Redirect.bits.cfiUpdate
   stage2CfiUpdate.pc := real_pc
