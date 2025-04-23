@@ -198,7 +198,7 @@ class ExceptionGen(implicit p: Parameters) extends XSModule with HasCircularQueu
   val csr_wb_bits = io.wb(0).bits
   val load_wb_bits = Mux(!in_wb_valid(2) || in_wb_valid(1) && isAfter(io.wb(2).bits.robIdx, io.wb(1).bits.robIdx), io.wb(1).bits, io.wb(2).bits)
   val store_wb_bits = Mux(!in_wb_valid(4) || in_wb_valid(3) && isAfter(io.wb(4).bits.robIdx, io.wb(3).bits.robIdx), io.wb(3).bits, io.wb(4).bits)
-  val s0_out_valid = RegNext(VecInit(Seq(wb_valid(0), wb_valid(1) || wb_valid(2), wb_valid(3) || wb_valid(4))))
+  val s0_out_valid = RegNext(VecInit(Seq(wb_valid(0), wb_valid(1) || wb_valid(2), wb_valid(3) || wb_valid(4))),VecInit(Seq.fill(3)(false.B)))
   val s0_out_bits = RegNext(VecInit(Seq(csr_wb_bits, load_wb_bits, store_wb_bits)))
 
   // s1: compare last four and current flush
@@ -206,8 +206,8 @@ class ExceptionGen(implicit p: Parameters) extends XSModule with HasCircularQueu
   val compare_01_valid = s0_out_valid(0) || s0_out_valid(1)
   val compare_01_bits = Mux(!s0_out_valid(0) || s0_out_valid(1) && isAfter(s0_out_bits(0).robIdx, s0_out_bits(1).robIdx), s0_out_bits(1), s0_out_bits(0))
   val compare_bits = Mux(!s0_out_valid(2) || compare_01_valid && isAfter(s0_out_bits(2).robIdx, compare_01_bits.robIdx), compare_01_bits, s0_out_bits(2))
-  val s1_out_bits = RegNext(compare_bits)
-  val s1_out_valid = RegNext(s1_valid.asUInt.orR)
+  val s1_out_bits = RegNext(compare_bits, 0.U.asTypeOf(new RobExceptionInfo()))
+  val s1_out_valid = RegNext(s1_valid.asUInt.orR, false.B)
 
   val enq_valid = RegNext(in_enq_valid.asUInt.orR && !io.redirect.valid && !io.flush)
   val enq_bits = RegNext(ParallelPriorityMux(in_enq_valid, io.enq.map(_.bits)))
