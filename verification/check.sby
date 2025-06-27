@@ -1,0 +1,22 @@
+[tasks]
+basic bmc
+basic: default
+
+[options]
+bmc:
+mode bmc
+depth 22
+
+[engines]
+smtbmc bitwuzla
+
+[script]
+read_verilog -sv formal.sv
+read_verilog -sv XSTop.v.sv
+prep -top XSCore
+
+[files]
+XSTop.v.sv
+formal.sv
+
+
