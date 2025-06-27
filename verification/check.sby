@@ -13,10 +13,18 @@ smtbmc bitwuzla
 [script]
 read_verilog -sv formal.sv
 read_verilog -sv XSTop.v.sv
-prep -top XSCore
+read_verilog -sv array_0_ext.v
+read_verilog -sv array_1_ext.v
+read_verilog -sv array_2_ext.v
+read_verilog -sv array_ext.v
+prep -top FormalTop
 
 [files]
 XSTop.v.sv
+array_0_ext.v
+array_1_ext.v
+array_2_ext.v
+array_ext.v
 formal.sv
 
 

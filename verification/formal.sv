@@ -203,7 +203,7 @@ module FormalTop(
       input  [31:0]  io_instr_0,
       input  [31:0]  io_instr_1
 );
-    \\reg core_reset = 1'b1;
+    reg core_reset = 1'b1;
     reg [1:0] reset_count = 2'b00;
     always@(posedge clock) begin
         if(reset_count != 2'b01)
