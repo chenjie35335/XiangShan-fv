@@ -27,6 +27,7 @@ import xiangshan._
 import xiangshan.backend.exu.ExuConfig
 import xiangshan.frontend.FtqPtr
 import rvspeccore.checker._
+import rvspeccore.core.spec.instset.csr.CSR
 
 class RobPtr(implicit p: Parameters) extends CircularQueuePtr[RobPtr](
   p => p(XSCoreParamsKey).RobSize
@@ -464,6 +465,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(wbIdx).debugInfo.selectTime := wb.bits.uop.debugInfo.selectTime
       debug_microOp(wbIdx).debugInfo.issueTime := wb.bits.uop.debugInfo.issueTime
       debug_microOp(wbIdx).debugInfo.writebackTime := wb.bits.uop.debugInfo.writebackTime
+      debug_microOp(wbIdx).privilegeNext := wb.bits.uop.privilegeNext
+      debug_microOp(wbIdx).privilege := wb.bits.uop.privilege
       //debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
 
       val debug_Uop = debug_microOp(wbIdx)
@@ -1023,6 +1026,26 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
 
   if(env.EnableFormal) {
     val checker = Module(new CheckerWithWB(checkMem = false, enableReg = false, checkNPC = true)(env.rvConfig))
+    def FvCSR2CSR(fvCSR: FvCSR, csr: CSR, csrExp: FvCSR, IsException: Bool) = {
+      //csr.mstatus   := Mux(IsException, csrExp.mstatus  ,fvCSR.mstatus  )
+      csr.mepc      := Mux(IsException, csrExp.mepc     ,fvCSR.mepc     )
+      csr.sepc      := Mux(IsException, csrExp.sepc     ,fvCSR.sepc     )
+      csr.mtval     := Mux(IsException, csrExp.mtval    ,fvCSR.mtval    )
+      csr.stval     := Mux(IsException, csrExp.stval    ,fvCSR.stval    )
+      csr.mcause    := Mux(IsException, csrExp.mcause   ,fvCSR.mcause   )
+      csr.scause    := Mux(IsException, csrExp.scause   ,fvCSR.scause   )
+      csr.satp      := Mux(IsException, csrExp.satp     ,fvCSR.satp     )
+      csr.mscratch  := Mux(IsException, csrExp.mscratch ,fvCSR.mscratch )
+      csr.sscratch  := Mux(IsException, csrExp.sscratch ,fvCSR.sscratch )
+      csr.mideleg   := Mux(IsException, csrExp.mideleg  ,fvCSR.mideleg  )
+      csr.medeleg   := Mux(IsException, csrExp.medeleg  ,fvCSR.medeleg  )
+      csr.marchid   := Mux(IsException, csrExp.marchid  ,fvCSR.marchid  )
+      csr.mvendorid := Mux(IsException, csrExp.mvendorid,fvCSR.mvendorid)
+      csr.mimpid    := Mux(IsException, csrExp.mimpid   ,fvCSR.mimpid   )
+      csr.mhartid   := Mux(IsException, csrExp.mhartid  ,fvCSR.mhartid  )
+      csr.mtvec     := Mux(IsException, csrExp.mtvec    ,fvCSR.mtvec    )
+     // csr.misa     := fvCSR.misa
+    }
     val index = WireInit(0.U)
     BoringUtils.addSink(index, "formalIndex")
 
@@ -1051,11 +1074,37 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     // 想办法说把这两个数据从流水线中传递过来
     checker.io.wb.r1Data        := Mux(SelUop.ctrl.srcType(0) === SrcType.reg,debug_exuSrc(deqPtrVec(index).value)(0), 0.U) // this two has to be move from pipeline
     checker.io.wb.r2Data        := Mux(SelUop.ctrl.srcType(1) === SrcType.reg,debug_exuSrc(deqPtrVec(index).value)(1), 0.U)
-    checker.io.wb.csrAddr       := 0.U
-    checker.io.wb.csrNdata      := 0.U
-    checker.io.wb.csrWr         := false.B
-
-//  liveness
+    // the old connection of Zicsr instruction
+//    checker.io.wb.csrAddr       := 0.U
+//    checker.io.wb.csrNdata      := 0.U
+//    checker.io.wb.csrWr         := false.B
+    val csr_fv = ConnectCheckerWb.makeCSRSource()(XLEN, env.rvConfig)
+    val csrNext_fv = ConnectCheckerWb.makeCSRNextSource()(XLEN, env.rvConfig)
+    val csrExc_fv = WireInit(0.U.asTypeOf(new FvCSR()))
+    val csrExcNext_fv = WireInit(0.U.asTypeOf(new FvCSR))
+    BoringUtils.addSink(csrExc_fv, "exceptionCSR")
+    BoringUtils.addSink(csrExcNext_fv, "exceptionCSRNext")
+      // event connection
+    val event_fv = ConnectCheckerWb.makeEventSource()(XLEN, env.rvConfig)
+    val event_valid         = WireInit(false.B)
+    val event_exceptionInst = WireInit(0.U(XLEN.W))
+    val event_exceptionPC   = WireInit(0.U(XLEN.W))
+    val event_cause         = WireInit(0.U(XLEN.W))
+    val event_intrNO        = WireInit(0.U(XLEN.W))
+    BoringUtils.addSink(event_valid         , "validFv")
+    BoringUtils.addSink(event_exceptionInst , "exceptionInstFv")
+    BoringUtils.addSink(event_exceptionPC   , "exceptionPCFv")
+    BoringUtils.addSink(event_cause         , "causeFv")
+    BoringUtils.addSink(event_intrNO        , "intrNo")
+    val IsSelectEvent = event_exceptionPC === SelUop.cf.pc
+    event_fv.valid        := Mux(IsSelectEvent, event_valid, false.B)
+    event_fv.exceptionInst:= Mux(IsSelectEvent, event_exceptionInst, 0.U)
+    event_fv.exceptionPC  := Mux(IsSelectEvent, event_exceptionPC  , 0.U)
+    event_fv.cause        := Mux(IsSelectEvent, event_cause        , 0.U)
+    event_fv.intrNO       := Mux(IsSelectEvent, event_intrNO       , 0.U)
+    FvCSR2CSR(SelUop.privilege.csr, csr_fv, csrExc_fv, IsSelectEvent && event_valid)
+    FvCSR2CSR(SelUop.privilegeNext.csr, csrNext_fv, csrExcNext_fv, IsSelectEvent && event_valid)
+    //  liveness
     val count = RegInit(0.U)
     count := count + 1.U
     val commit = RegInit(false.B)
@@ -1064,7 +1113,6 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
 
     ConnectCheckerWb.setChecker(checker)(64,env.rvConfig)
 
-    val csr = ConnectCheckerWb.makeCSRSource()(64, env.rvConfig)
   }
 // 对于difftest来说，这里其实只需要给出pc就可以了，根本不用关心说整个这个PC的nextPC是什么
   if (env.EnableDifftest) {

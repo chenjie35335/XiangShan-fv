@@ -215,6 +215,49 @@ class LSIdx(implicit p: Parameters) extends XSBundle {
   val sqIdx = new SqPtr
 }
 
+class FvCSR(implicit p : Parameters) extends XSBundle{ // Zicsr不会影响特权级的问题，只有发生异常的时候才会出现
+  val mstatus   = UInt(XLEN.W)
+  val mepc      = UInt(XLEN.W)
+  val sepc      = UInt(XLEN.W)
+  val mtval     = UInt(XLEN.W)
+  val stval     = UInt(XLEN.W)
+  val mtvec     = UInt(XLEN.W)
+  val mcause    = UInt(XLEN.W)
+  val scause    = UInt(XLEN.W)
+  val satp      = UInt(XLEN.W)
+  val mscratch  = UInt(XLEN.W)
+  val sscratch  = UInt(XLEN.W)
+  val mideleg   = UInt(XLEN.W)
+  val medeleg   = UInt(XLEN.W)
+  val marchid   = UInt(XLEN.W)
+  val mvendorid = UInt(XLEN.W)
+  val mimpid    = UInt(XLEN.W)
+  val mhartid   = UInt(XLEN.W)
+ // val misa      = UInt(XLEN.W)
+  def wireInit() : FvCSR = {
+    val csr = new FvCSR()
+    csr := 0.U.asTypeOf(new FvCSR)
+    csr
+  }
+}
+
+class FvPrivilege(implicit p : Parameters) extends XSBundle {
+  val csr = new FvCSR
+}
+
+class FvEvent(implicit p : Parameters) extends XSBundle{
+  val valid         = Bool()
+  val intrNO        = UInt(XLEN.W)
+  val cause         = UInt(XLEN.W)
+  val exceptionPC   = UInt(XLEN.W)
+  val exceptionInst = UInt(XLEN.W)
+  def wireInit() : FvEvent = {
+    val event = new FvEvent()
+    event := 0.U.asTypeOf(new FvEvent)
+    event
+  }
+}
+
 // CfCtrl -> MicroOp at Rename Stage
 class MicroOp(implicit p: Parameters) extends CfCtrl {
   val srcState = Vec(3, SrcState())
@@ -227,6 +270,8 @@ class MicroOp(implicit p: Parameters) extends CfCtrl {
   val eliminatedMove = Bool()
   val debugInfo = new PerfDebugInfo
   val SrcValue = Vec(3, UInt(XLEN.W))
+  val privilege = new FvPrivilege
+  val privilegeNext = new FvPrivilege
   def needRfRPort(index: Int, isFp: Boolean, ignoreState: Boolean = true) : Bool = {
     val stateReady = srcState(index) === SrcState.rdy || ignoreState.B
     val readReg = if (isFp) {

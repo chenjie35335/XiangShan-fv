@@ -21,7 +21,7 @@ import chisel3.util._
 import chisel3.util.experimental.BoringUtils
 import device.EnableFormal
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import rvspeccore.checker.{RVB, RVI, RVM}
+import rvspeccore.checker.{RVB, RVI, RVM, RVZicsr}
 import utils._
 import xiangshan._
 import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
@@ -127,10 +127,10 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
     if (env.EnableFormal) {
       implicit val checker_xlen = 64
       assume(
-        RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr) ||
-          RVI.control(io.backend.cfVec(i).bits.instr) ||
-        RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) || RVB.zbc(io.backend.cfVec(i).bits.instr) ||
-        RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr)
+        RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr) || RVI.control(io.backend.cfVec(i).bits.instr) || RVI.other(io.backend.cfVec(i).bits.instr) ||
+          RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) ||
+          RVB.zbc(io.backend.cfVec(i).bits.instr) || RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr) ||
+          RVZicsr.reg(io.backend.cfVec(i).bits.instr) || RVZicsr.imm(io.backend.cfVec(i).bits.instr)
       )
       //|| RVM.mulOp(io.backend.cfVec(i).bits.instr) || RVM.divOp(io.backend.cfVec(i).bits.instr))
     }

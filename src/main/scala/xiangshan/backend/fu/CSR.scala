@@ -19,8 +19,10 @@ package xiangshan.backend.fu
 import chipsalliance.rocketchip.config.Parameters
 import chisel3._
 import chisel3.util._
+import chisel3.util.experimental.BoringUtils
 import difftest._
 import freechips.rocketchip.util._
+import rvspeccore.checker.ConnectCheckerWb
 import utils.MaskedRegMap.WritableMask
 import utils._
 import xiangshan.ExceptionNO._
@@ -243,7 +245,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   val mcounteren = RegInit(UInt(XLEN.W), 0.U)
   val mcause = RegInit(UInt(XLEN.W), 0.U)
   val mtval = RegInit(UInt(XLEN.W), 0.U)
-  val mepc = Reg(UInt(XLEN.W))
+  val mepc = Reg(UInt(XLEN.W)) //没有初始化
   // Page 36 in riscv-priv: The low bit of mepc (mepc[0]) is always zero.
   val mepcMask = ~(0x1.U(XLEN.W))
 
@@ -671,6 +673,9 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   for (addr <- mapping.keys.toSeq.sorted) {
     println(f"$addr%#03x ${mapping(addr)._1}")
   }
+  val ndata = WireInit(0.U(XLEN.W))
+
+  // others
 
   val addr = src2(11, 0)
   val csri = ZeroExt(src2(16, 12), XLEN)
@@ -683,7 +688,6 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     CSROpType.seti -> (rdata | csri),
     CSROpType.clri -> (rdata & (~csri).asUInt)
   ))
-
   val addrInPerfCnt = (addr >= Mcycle.U) && (addr <= Mhpmcounter31.U) ||
     (addr >= Mcountinhibit.U) && (addr <= Mhpmevent31.U) ||
     (addr >= Cycle.U) && (addr <= Hpmcounter31.U) ||
@@ -702,7 +706,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   val wen = valid && func =/= CSROpType.jmp && (addr=/=Satp.U || satpLegalMode)
   val dcsrPermitted = dcsrPermissionCheck(addr, false.B, debugMode)
   val triggerPermitted = triggerPermissionCheck(addr, true.B, debugMode) // todo dmode
-  val modePermitted = csrAccessPermissionCheck(addr, false.B, priviledgeMode) && dcsrPermitted && triggerPermitted
+  val modePermitted = csrAccessPermissionCheck(addr, wen, priviledgeMode) && dcsrPermitted && triggerPermitted // 这里不是很懂为什么要使用false.B当作mode
   val perfcntPermitted = perfcntPermissionCheck(addr, priviledgeMode, mcounteren, scounteren)
   val permitted = Mux(addrInPerfCnt, perfcntPermitted, modePermitted) && accessPermitted
 
@@ -711,7 +715,6 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   io.out.bits.uop := io.in.bits.uop
   io.out.bits.uop.cf := cfOut
   io.out.bits.uop.ctrl.flushPipe := flushPipe
-
   // send distribute csr a w signal
   csrio.customCtrl.distribute_csr.w.valid := wen && permitted
   csrio.customCtrl.distribute_csr.w.bits.data := wdata
@@ -780,7 +783,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   XSDebug(triggerEnableVec.reduce(_ || _), p"Debug Mode: At least 1 trigger is enabled," +
     p"trigger enable is ${Binary(triggerEnableVec.asUInt)}\n")
 
-  // CSR inst decode
+  // CSR inst decode //firstly verify ebreak and ecall
   val isEbreak = addr === privEbreak && func === CSROpType.jmp
   val isEcall  = addr === privEcall  && func === CSROpType.jmp
   val isMret   = addr === privMret   && func === CSROpType.jmp
@@ -1007,7 +1010,14 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     medeleg,
     priviledgeMode
   )
-
+  val mstatus_exc = WireInit(0.U(XLEN.W))
+  val scause_exc  = WireInit(0.U(XLEN.W))
+  val sepc_exc    = WireInit(0.U(XLEN.W))
+  val stval_exc   = WireInit(0.U(XLEN.W))
+  val mcause_exc  = WireInit(0.U(XLEN.W))
+  val mepc_exc    = WireInit(0.U(XLEN.W))
+  val mtval_exc   = WireInit(0.U(XLEN.W))
+  val mode_exc    = WireInit(0.U(2.W))
   // mtval write logic
   // Due to timing reasons of memExceptionVAddr, we delay the write of mtval and stval
   val memExceptionAddr = SignExt(csrio.memExceptionVAddr, XLEN)
@@ -1072,7 +1082,6 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
       ((hasDebugTrap && !debugMode) || ebreakEnterParkLoop) -> debugTrapTarget
     )),
     isXRetFlag || csrio.exception.valid)
-
   when (hasExceptionIntr) {
     val mstatusOld = WireInit(mstatus.asTypeOf(new MstatusStruct))
     val mstatusNew = WireInit(mstatus.asTypeOf(new MstatusStruct))
@@ -1106,7 +1115,12 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
       mstatusNew.pie.s := mstatusOld.ie.s
       mstatusNew.ie.s := false.B
       priviledgeMode := ModeS
-      when (clearTval) { stval := 0.U }
+      //formal
+      scause_exc := causeNO
+      sepc_exc   := Mux(hasInstrPageFault || hasInstrAccessFault, iexceptionPC, dexceptionPC)
+      mode_exc   := ModeS
+      //
+      when (clearTval) { stval := 0.U; stval_exc := 0.U}
     }.otherwise {
       mcause := causeNO
       mepc := Mux(hasInstrPageFault || hasInstrAccessFault, iexceptionPC, dexceptionPC)
@@ -1114,9 +1128,15 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
       mstatusNew.pie.m := mstatusOld.ie.m
       mstatusNew.ie.m := false.B
       priviledgeMode := ModeM
-      when (clearTval) { mtval := 0.U }
+      //formal
+      mcause_exc := causeNO
+      mepc_exc   := Mux(hasInstrPageFault || hasInstrAccessFault, iexceptionPC, dexceptionPC)
+      mode_exc   := ModeM
+      //
+      when (clearTval) { mtval := 0.U; mtval_exc := 0.U}
     }
     mstatus := mstatusNew.asUInt
+    mstatus_exc := mstatusNew.asUInt
     debugMode := debugModeNew
   }
 
@@ -1162,10 +1182,133 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     mepc := Cat(mepc(XLEN - 1, 1), 0.U(1.W))
     sepc := Cat(sepc(XLEN - 1, 1), 0.U(1.W))
   }
+  // for formal verification
+  // formal verification
+  val fvCSR = WireInit(0.U.asTypeOf(new FvCSR()))
+  fvCSR.mstatus := mstatus
+  fvCSR.mepc    := mepc
+  fvCSR.sepc    := sepc
+  fvCSR.mtval   := mtval
+  fvCSR.stval   := stval
+  fvCSR.mtvec   := mtvec
+  fvCSR.mcause  := mcause
+  fvCSR.scause  := scause
+  fvCSR.satp    := satp
+  fvCSR.mscratch:= mscratch
+  fvCSR.sscratch:= sscratch
+  fvCSR.mideleg := mideleg
+  fvCSR.medeleg := medeleg
+  fvCSR.marchid := marchid
+  fvCSR.mvendorid := mvendorid
+  fvCSR.mimpid := mimpid
+  fvCSR.mhartid := mhartid
+  BoringUtils.addSource(fvCSR, "exceptionCSR")
+  //fvCSR.misa  := misa
+  val fvCSRNext = Wire(new FvCSR())
+  val fvCSRNextException = Wire(new FvCSR())
+  fvCSRNext := fvCSR
+  fvCSRNextException := fvCSR
+  val fvCSRExNext = Wire(new FvCSR())
+  fvCSRExNext := fvCSR
+  when(hasExceptionIntr) {
+    fvCSRExNext.mtval := mtval_exc
+    fvCSRExNext.stval := stval_exc
+    fvCSRExNext.sepc := sepc_exc
+    fvCSRExNext.mepc := mepc_exc
+    fvCSRExNext.mstatus := mstatus_exc
+    fvCSRExNext.mcause := mcause_exc
+    fvCSRExNext.scause := scause_exc
+  }
+  val formal_csr_mapping = Map(
+    //--- Supervisor Trap Handling ---
+    MaskedRegMap(Sscratch, sscratch),
+    MaskedRegMap(Sepc, sepc, sepcMask, MaskedRegMap.NoSideEffect, sepcMask),
+    MaskedRegMap(Scause, scause),
+    MaskedRegMap(Stval, stval),
+
+    //--- Supervisor Protection and Translation ---
+    MaskedRegMap(Satp, satp, satpMask, MaskedRegMap.NoSideEffect, satpMask),
+
+    //--- Machine Information Registers ---
+    MaskedRegMap(Mvendorid, mvendorid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+    MaskedRegMap(Marchid, marchid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+    MaskedRegMap(Mimpid, mimpid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+    MaskedRegMap(Mhartid, mhartid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+
+    //--- Machine Trap Setup ---
+    MaskedRegMap(Mstatus, mstatus, mstatusWMask, mstatusUpdateSideEffect, mstatusMask),
+    //MaskedRegMap(Misa, misa, 0.U, MaskedRegMap.Unwritable), // now whole misa is unchangeable
+    MaskedRegMap(Medeleg, medeleg, "hb3ff".U(XLEN.W)),
+    MaskedRegMap(Mideleg, mideleg, "h222".U(XLEN.W)),
+    MaskedRegMap(Mtvec, mtvec, mtvecMask, MaskedRegMap.NoSideEffect, mtvecMask),
+
+    //--- Machine Trap Handling ---
+    MaskedRegMap(Mscratch, mscratch),
+    MaskedRegMap(Mepc, mepc, mepcMask, MaskedRegMap.NoSideEffect, mepcMask),
+    MaskedRegMap(Mcause, mcause),
+    MaskedRegMap(Mtval, mtval)
+  )
+  val formal_csrNext_mapping = Map(
+    //Mstatus.U-> fvCSRNext.mstatus,
+    Mepc.U   -> fvCSRNext.mepc,
+    Sepc.U   -> fvCSRNext.sepc,
+    Mtval.U  -> fvCSRNext.mtval,
+    Stval.U  -> fvCSRNext.stval,
+    Mtvec.U  -> fvCSRNext.mtvec,
+    Mcause.U -> fvCSRNext.mcause,
+    Scause.U -> fvCSRNext.scause,
+    Satp.U   -> fvCSRNext.satp,
+    Mscratch.U -> fvCSRNext.mscratch,
+    Sscratch.U -> fvCSRNext.sscratch,
+    Mideleg.U -> fvCSRNext.mideleg,
+    Medeleg.U -> fvCSRNext.medeleg,
+    Marchid.U -> fvCSRNext.marchid,
+    Mvendorid.U -> fvCSRNext.mvendorid,
+    Mimpid.U ->   fvCSRNext.mimpid,
+    Mhartid.U ->   fvCSRNext.mhartid
+    //Misa.U ->     fvCSRNext.misa
+  )
+  MaskedRegMap.updateNext(formal_csr_mapping, addr, wen && permitted, wdata, ndata)
+  formal_csrNext_mapping.foreach{
+    case(a, r) =>
+      when(a === addr) {
+        r := ndata
+      }
+  }
+  // formal assume
+  val csrExits = WireInit(false.B)
+  csrExits := formal_csrNext_mapping.keys.map(
+    a => addr === a
+  ).foldLeft(false.B)(_||_)
+  when(wen) {
+    assume(csrExits)
+  }
+  BoringUtils.addSource(fvCSRNextException, "exceptionCSRNext")
+  io.out.bits.uop.privilege.csr := fvCSR
+  io.out.bits.uop.privilegeNext.csr := fvCSRNext
+  // privileged Mode
+  val Mode = ConnectCheckerWb.makeModeSource()(64, env.rvConfig)
+  Mode := priviledgeMode
+  val ModeNext = ConnectCheckerWb.makeModeNextSource()(64, env.rvConfig)
+  ModeNext := Mux(hasExceptionIntr, mode_exc, priviledgeMode)
+  //
+  //
 
   def readWithScala(addr: Int): UInt = mapping(addr)._1
 
   val difftestIntrNO = Mux(hasIntr, causeNO, 0.U)
+
+  val IntrNoFv = difftestIntrNO
+  val CauseFv  = Mux(csrio.exception.valid, causeNO, 0.U)
+  val ValidFv  = csrio.exception.valid
+  val ExceptionPCFv = dexceptionPC
+  val ExceptionInstFv = csrio.exception.bits.uop.cf.instr
+
+  BoringUtils.addSource(IntrNoFv, "intrNo")
+  BoringUtils.addSource(CauseFv, "causeFv")
+  BoringUtils.addSource(ValidFv, "validFv")
+  BoringUtils.addSource(ExceptionPCFv, "exceptionPCFv")
+  BoringUtils.addSource(ExceptionInstFv, "exceptionInstFv")
 
   // Always instantiate basic difftest modules.
   if (env.AlwaysBasicDiff || env.EnableDifftest) {

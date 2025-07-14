@@ -92,7 +92,11 @@ abstract class FunctionUnit(len: Int = 64)(implicit p: Parameters) extends XSMod
 
   val srcReg = RegEnable(io.in.bits.src, io.in.fire)
 
-  io.out.bits.src := Mux(io.in.fire, io.in.bits.src, srcReg)
+  io.out.bits.src := Mux(
+    io.in.fire && io.out.fire && io.in.bits.uop.robIdx.value === io.out.bits.uop.robIdx.value ,
+    io.in.bits.src,
+    srcReg
+  )
 
 }
 

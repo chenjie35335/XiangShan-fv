@@ -57,6 +57,18 @@ object MaskedRegMap { // TODO: add read mask
       }
     }
   }
+  def updateNext(mapping: Map[Int, (UInt, UInt, UInt => UInt, UInt, UInt => UInt)],
+                 waddr: UInt, wen: Bool, wdata: UInt, ndata: UInt) : Unit = {
+    val chiselMapping = mapping.map { case (a, (r, wm, w, rm, rfn)) => (a.U, r, wm, w, rm, rfn) }
+    chiselMapping.foreach { case (a, r, wm, w, _, _) =>
+      if (w != null && wm != UnwritableMask) {
+        // Warning: this RegMap adds a RegNext for write to reduce fanout
+        // the w must be pure function without side effects
+        val wen_reg = wen && waddr === a
+        when (wen_reg) { ndata := w(MaskData(r, wdata, wm)) }
+      }
+    }
+  }
   def isIllegalAddr(mapping: Map[Int, (UInt, UInt, UInt => UInt, UInt, UInt => UInt)], addr: UInt):Bool = {
     val illegalAddr = Wire(Bool())
     illegalAddr := LookupTreeDefault(addr, true.B, mapping.toSeq.sortBy(_._1).map { case (a, _) => (a.U, false.B) })
