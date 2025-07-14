@@ -362,5 +362,8 @@ stack.info*
 *.vpd
 *.bin
 
+#verification file
+verification/
+
 !ready-to-run/*
 
