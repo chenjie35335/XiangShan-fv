@@ -5,6 +5,7 @@ basic: default
 [options]
 bmc:
 mode bmc
+skip 11
 depth 22
 
 [engines]

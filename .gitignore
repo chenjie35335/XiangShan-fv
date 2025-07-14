@@ -363,7 +363,8 @@ stack.info*
 *.bin
 
 #verification file
-verification/
+verification/check/
+verification/check_basic/
 
 !ready-to-run/*
 
