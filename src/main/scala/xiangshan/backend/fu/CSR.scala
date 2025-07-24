@@ -1184,132 +1184,135 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   }
   // for formal verification
   // formal verification
-  val fvCSR = WireInit(0.U.asTypeOf(new FvCSR()))
-  fvCSR.mstatus := mstatus
-  fvCSR.mepc    := mepc
-  fvCSR.sepc    := sepc
-  fvCSR.mtval   := mtval
-  fvCSR.stval   := stval
-  fvCSR.mtvec   := mtvec
-  fvCSR.mcause  := mcause
-  fvCSR.scause  := scause
-  fvCSR.satp    := satp
-  fvCSR.mscratch:= mscratch
-  fvCSR.sscratch:= sscratch
-  fvCSR.mideleg := mideleg
-  fvCSR.medeleg := medeleg
-  fvCSR.marchid := marchid
-  fvCSR.mvendorid := mvendorid
-  fvCSR.mimpid := mimpid
-  fvCSR.mhartid := mhartid
-  BoringUtils.addSource(fvCSR, "exceptionCSR")
-  //fvCSR.misa  := misa
-  val fvCSRNext = Wire(new FvCSR())
-  val fvCSRNextException = Wire(new FvCSR())
-  fvCSRNext := fvCSR
-  fvCSRNextException := fvCSR
-  val fvCSRExNext = Wire(new FvCSR())
-  fvCSRExNext := fvCSR
-  when(hasExceptionIntr) {
-    fvCSRExNext.mtval := mtval_exc
-    fvCSRExNext.stval := stval_exc
-    fvCSRExNext.sepc := sepc_exc
-    fvCSRExNext.mepc := mepc_exc
-    fvCSRExNext.mstatus := mstatus_exc
-    fvCSRExNext.mcause := mcause_exc
-    fvCSRExNext.scause := scause_exc
+  if(env.EnableFormal) {
+    val fvCSR = WireInit(0.U.asTypeOf(new FvCSR()))
+    fvCSR.mstatus := mstatus
+    fvCSR.mepc := mepc
+    fvCSR.sepc := sepc
+    fvCSR.mtval := mtval
+    fvCSR.stval := stval
+    fvCSR.mtvec := mtvec
+    fvCSR.mcause := mcause
+    fvCSR.scause := scause
+    fvCSR.satp := satp
+    fvCSR.mscratch := mscratch
+    fvCSR.sscratch := sscratch
+    fvCSR.mideleg := mideleg
+    fvCSR.medeleg := medeleg
+    fvCSR.marchid := marchid
+    fvCSR.mvendorid := mvendorid
+    fvCSR.mimpid := mimpid
+    fvCSR.mhartid := mhartid
+    BoringUtils.addSource(fvCSR, "exceptionCSR")
+    //fvCSR.misa  := misa
+    val fvCSRNext = Wire(new FvCSR())
+    val fvCSRNextException = Wire(new FvCSR())
+    fvCSRNext := fvCSR
+    fvCSRNextException := fvCSR
+    val fvCSRExNext = Wire(new FvCSR())
+    fvCSRExNext := fvCSR
+    when(hasExceptionIntr) {
+      fvCSRExNext.mtval := mtval_exc
+      fvCSRExNext.stval := stval_exc
+      fvCSRExNext.sepc := sepc_exc
+      fvCSRExNext.mepc := mepc_exc
+      fvCSRExNext.mstatus := mstatus_exc
+      fvCSRExNext.mcause := mcause_exc
+      fvCSRExNext.scause := scause_exc
+    }
+    val formal_csr_mapping = Map(
+      //--- Supervisor Trap Handling ---
+      MaskedRegMap(Sstatus, mstatus, sstatusWmask, mstatusUpdateSideEffect, sstatusRmask),
+      MaskedRegMap(Sscratch, sscratch),
+      MaskedRegMap(Sepc, sepc, sepcMask, MaskedRegMap.NoSideEffect, sepcMask),
+      MaskedRegMap(Scause, scause),
+      MaskedRegMap(Stval, stval),
+
+      //--- Supervisor Protection and Translation ---
+      MaskedRegMap(Satp, satp, satpMask, MaskedRegMap.NoSideEffect, satpMask),
+
+      //--- Machine Information Registers ---
+      MaskedRegMap(Mvendorid, mvendorid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+      MaskedRegMap(Marchid, marchid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+      MaskedRegMap(Mimpid, mimpid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+      MaskedRegMap(Mhartid, mhartid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
+
+      //--- Machine Trap Setup ---
+      MaskedRegMap(Mstatus, mstatus, mstatusWMask, mstatusUpdateSideEffect, mstatusMask),
+      //MaskedRegMap(Misa, misa, 0.U, MaskedRegMap.Unwritable), // now whole misa is unchangeable
+      MaskedRegMap(Medeleg, medeleg, "hb3ff".U(XLEN.W)),
+      MaskedRegMap(Mideleg, mideleg, "h222".U(XLEN.W)),
+      MaskedRegMap(Mtvec, mtvec, mtvecMask, MaskedRegMap.NoSideEffect, mtvecMask),
+
+      //--- Machine Trap Handling ---
+      MaskedRegMap(Mscratch, mscratch),
+      MaskedRegMap(Mepc, mepc, mepcMask, MaskedRegMap.NoSideEffect, mepcMask),
+      MaskedRegMap(Mcause, mcause),
+      MaskedRegMap(Mtval, mtval)
+    )
+    val formal_csrNext_mapping = Map(
+      Sstatus.U -> fvCSRNext.mstatus,
+      Mstatus.U -> fvCSRNext.mstatus,
+      Mepc.U -> fvCSRNext.mepc,
+      Sepc.U -> fvCSRNext.sepc,
+      Mtval.U -> fvCSRNext.mtval,
+      Stval.U -> fvCSRNext.stval,
+      Mtvec.U -> fvCSRNext.mtvec,
+      Mcause.U -> fvCSRNext.mcause,
+      Scause.U -> fvCSRNext.scause,
+      Satp.U -> fvCSRNext.satp,
+      Mscratch.U -> fvCSRNext.mscratch,
+      Sscratch.U -> fvCSRNext.sscratch,
+      Mideleg.U -> fvCSRNext.mideleg,
+      Medeleg.U -> fvCSRNext.medeleg,
+      Marchid.U -> fvCSRNext.marchid,
+      Mvendorid.U -> fvCSRNext.mvendorid,
+      Mimpid.U -> fvCSRNext.mimpid,
+      Mhartid.U -> fvCSRNext.mhartid
+      //Misa.U ->     fvCSRNext.misa
+    )
+    MaskedRegMap.updateNext(formal_csr_mapping, addr, wen && permitted, wdata, ndata)
+    formal_csrNext_mapping.foreach {
+      case (a, r) =>
+        when(a === addr) {
+          r := ndata
+        }
+    }
+    // formal assume
+    val csrExits = WireInit(false.B)
+    csrExits := formal_csrNext_mapping.keys.map(
+      a => addr === a
+    ).foldLeft(false.B)(_ || _)
+    when(wen) {
+      assume(csrExits)
+    }
+    BoringUtils.addSource(fvCSRNextException, "exceptionCSRNext")
+    io.out.bits.uop.privilege.csr := fvCSR
+    io.out.bits.uop.privilegeNext.csr := fvCSRNext
+    // privileged Mode
+    val Mode = ConnectCheckerWb.makeModeSource()(64, env.rvConfig)
+    Mode := priviledgeMode
+    val ModeNext = ConnectCheckerWb.makeModeNextSource()(64, env.rvConfig)
+    ModeNext := Mux(hasExceptionIntr, mode_exc, priviledgeMode)
+    //
+    //
+
+    def readWithScala(addr: Int): UInt = mapping(addr)._1
+
+    val difftestIntrNO = Mux(hasIntr, causeNO, 0.U)
+
+    val IntrNoFv = difftestIntrNO
+    val CauseFv = Mux(csrio.exception.valid, causeNO, 0.U)
+    val ValidFv = csrio.exception.valid
+    val ExceptionPCFv = dexceptionPC
+    val ExceptionInstFv = csrio.exception.bits.uop.cf.instr
+
+    BoringUtils.addSource(IntrNoFv, "intrNo")
+    BoringUtils.addSource(CauseFv, "causeFv")
+    BoringUtils.addSource(ValidFv, "validFv")
+    BoringUtils.addSource(ExceptionPCFv, "exceptionPCFv")
+    BoringUtils.addSource(ExceptionInstFv, "exceptionInstFv")
   }
-  val formal_csr_mapping = Map(
-    //--- Supervisor Trap Handling ---
-    MaskedRegMap(Sscratch, sscratch),
-    MaskedRegMap(Sepc, sepc, sepcMask, MaskedRegMap.NoSideEffect, sepcMask),
-    MaskedRegMap(Scause, scause),
-    MaskedRegMap(Stval, stval),
-
-    //--- Supervisor Protection and Translation ---
-    MaskedRegMap(Satp, satp, satpMask, MaskedRegMap.NoSideEffect, satpMask),
-
-    //--- Machine Information Registers ---
-    MaskedRegMap(Mvendorid, mvendorid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
-    MaskedRegMap(Marchid, marchid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
-    MaskedRegMap(Mimpid, mimpid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
-    MaskedRegMap(Mhartid, mhartid, 0.U(XLEN.W), MaskedRegMap.Unwritable),
-
-    //--- Machine Trap Setup ---
-    MaskedRegMap(Mstatus, mstatus, mstatusWMask, mstatusUpdateSideEffect, mstatusMask),
-    //MaskedRegMap(Misa, misa, 0.U, MaskedRegMap.Unwritable), // now whole misa is unchangeable
-    MaskedRegMap(Medeleg, medeleg, "hb3ff".U(XLEN.W)),
-    MaskedRegMap(Mideleg, mideleg, "h222".U(XLEN.W)),
-    MaskedRegMap(Mtvec, mtvec, mtvecMask, MaskedRegMap.NoSideEffect, mtvecMask),
-
-    //--- Machine Trap Handling ---
-    MaskedRegMap(Mscratch, mscratch),
-    MaskedRegMap(Mepc, mepc, mepcMask, MaskedRegMap.NoSideEffect, mepcMask),
-    MaskedRegMap(Mcause, mcause),
-    MaskedRegMap(Mtval, mtval)
-  )
-  val formal_csrNext_mapping = Map(
-    //Mstatus.U-> fvCSRNext.mstatus,
-    Mepc.U   -> fvCSRNext.mepc,
-    Sepc.U   -> fvCSRNext.sepc,
-    Mtval.U  -> fvCSRNext.mtval,
-    Stval.U  -> fvCSRNext.stval,
-    Mtvec.U  -> fvCSRNext.mtvec,
-    Mcause.U -> fvCSRNext.mcause,
-    Scause.U -> fvCSRNext.scause,
-    Satp.U   -> fvCSRNext.satp,
-    Mscratch.U -> fvCSRNext.mscratch,
-    Sscratch.U -> fvCSRNext.sscratch,
-    Mideleg.U -> fvCSRNext.mideleg,
-    Medeleg.U -> fvCSRNext.medeleg,
-    Marchid.U -> fvCSRNext.marchid,
-    Mvendorid.U -> fvCSRNext.mvendorid,
-    Mimpid.U ->   fvCSRNext.mimpid,
-    Mhartid.U ->   fvCSRNext.mhartid
-    //Misa.U ->     fvCSRNext.misa
-  )
-  MaskedRegMap.updateNext(formal_csr_mapping, addr, wen && permitted, wdata, ndata)
-  formal_csrNext_mapping.foreach{
-    case(a, r) =>
-      when(a === addr) {
-        r := ndata
-      }
-  }
-  // formal assume
-  val csrExits = WireInit(false.B)
-  csrExits := formal_csrNext_mapping.keys.map(
-    a => addr === a
-  ).foldLeft(false.B)(_||_)
-  when(wen) {
-    assume(csrExits)
-  }
-  BoringUtils.addSource(fvCSRNextException, "exceptionCSRNext")
-  io.out.bits.uop.privilege.csr := fvCSR
-  io.out.bits.uop.privilegeNext.csr := fvCSRNext
-  // privileged Mode
-  val Mode = ConnectCheckerWb.makeModeSource()(64, env.rvConfig)
-  Mode := priviledgeMode
-  val ModeNext = ConnectCheckerWb.makeModeNextSource()(64, env.rvConfig)
-  ModeNext := Mux(hasExceptionIntr, mode_exc, priviledgeMode)
-  //
-  //
-
-  def readWithScala(addr: Int): UInt = mapping(addr)._1
-
-  val difftestIntrNO = Mux(hasIntr, causeNO, 0.U)
-
-  val IntrNoFv = difftestIntrNO
-  val CauseFv  = Mux(csrio.exception.valid, causeNO, 0.U)
-  val ValidFv  = csrio.exception.valid
-  val ExceptionPCFv = dexceptionPC
-  val ExceptionInstFv = csrio.exception.bits.uop.cf.instr
-
-  BoringUtils.addSource(IntrNoFv, "intrNo")
-  BoringUtils.addSource(CauseFv, "causeFv")
-  BoringUtils.addSource(ValidFv, "validFv")
-  BoringUtils.addSource(ExceptionPCFv, "exceptionPCFv")
-  BoringUtils.addSource(ExceptionInstFv, "exceptionInstFv")
-
   // Always instantiate basic difftest modules.
   if (env.AlwaysBasicDiff || env.EnableDifftest) {
     val difftest = Module(new DifftestArchEvent)

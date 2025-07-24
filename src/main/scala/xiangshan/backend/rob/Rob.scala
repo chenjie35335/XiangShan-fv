@@ -467,6 +467,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(wbIdx).debugInfo.writebackTime := wb.bits.uop.debugInfo.writebackTime
       debug_microOp(wbIdx).privilegeNext := wb.bits.uop.privilegeNext
       debug_microOp(wbIdx).privilege := wb.bits.uop.privilege
+      debug_microOp(wbIdx).mem := wb.bits.uop.mem
       //debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
 
       val debug_Uop = debug_microOp(wbIdx)
@@ -1025,7 +1026,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   }
 
   if(env.EnableFormal) {
-    val checker = Module(new CheckerWithWB(checkMem = false, enableReg = false, checkNPC = true)(env.rvConfig))
+    val checker = Module(new CheckerWithWB(checkMem = true, enableReg = false, checkNPC = true)(env.rvConfig))
     def FvCSR2CSR(fvCSR: FvCSR, csr: CSR, csrExp: FvCSR, IsException: Bool) = {
       //csr.mstatus   := Mux(IsException, csrExp.mstatus  ,fvCSR.mstatus  )
       csr.mepc      := Mux(IsException, csrExp.mepc     ,fvCSR.mepc     )
@@ -1110,7 +1111,16 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     val commit = RegInit(false.B)
     when(checker.io.instCommit.valid) { commit := true.B }
     assert(count <= 10.U || commit)
-
+    // memory
+    val mem = ConnectCheckerWb.makeMemSource()(XLEN)
+    mem.read.valid      := !SelUop.mem.cmd && SelUop.mem.valid
+    mem.read.data       := SelUop.mem.data
+    mem.read.memWidth   := SelUop.mem.size
+    mem.read.addr       := SelUop.mem.addr
+    mem.write.valid     := SelUop.mem.cmd && SelUop.mem.valid
+    mem.write.data      := SelUop.mem.data
+    mem.write.memWidth  := SelUop.mem.size
+    mem.write.addr      := SelUop.mem.addr
     ConnectCheckerWb.setChecker(checker)(64,env.rvConfig)
 
   }

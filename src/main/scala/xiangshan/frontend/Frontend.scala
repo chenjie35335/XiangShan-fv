@@ -128,6 +128,7 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
       implicit val checker_xlen = 64
       assume(
         RVI.regImm(io.backend.cfVec(i).bits.instr) || RVI.regReg(io.backend.cfVec(i).bits.instr) || RVI.control(io.backend.cfVec(i).bits.instr) || RVI.other(io.backend.cfVec(i).bits.instr) ||
+          RVI.loadStore(io.backend.cfVec(i).bits.instr) ||
           RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) ||
           RVB.zbc(io.backend.cfVec(i).bits.instr) || RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr) ||
           RVZicsr.reg(io.backend.cfVec(i).bits.instr) || RVZicsr.imm(io.backend.cfVec(i).bits.instr)

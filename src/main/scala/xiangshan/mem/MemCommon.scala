@@ -37,6 +37,17 @@ object genWmask {
   }
 }
 
+object genSize {
+  def apply(sizeEncode: UInt): UInt = {
+    (LookupTree(sizeEncode, List(
+      "b00".U -> 0x8.U,
+      "b01".U -> 0x10.U,
+      "b10".U -> 0x20.U,
+      "b11".U -> 0x40.U
+    ))).asUInt()
+  }
+}
+
 object genWdata {
   def apply(data: UInt, sizeEncode: UInt): UInt = {
     LookupTree(sizeEncode, List(

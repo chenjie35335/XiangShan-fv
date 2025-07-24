@@ -103,6 +103,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
     uop.SrcValue(2) := DontCare
     uop.privilegeNext.csr := 0.U.asTypeOf(new FvCSR())
     uop.privilege.csr := 0.U.asTypeOf(new FvCSR())
+    uop.mem := 0.U.asTypeOf(new MemSig())
   })
 
   val needFpDest = Wire(Vec(RenameWidth, Bool()))

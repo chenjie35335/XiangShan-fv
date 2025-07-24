@@ -138,6 +138,13 @@ class LoadUnit_S0(implicit p: Parameters) extends XSModule with HasDCacheParamet
   io.out.bits.rsIdx := io.rsIdx
   io.out.bits.isFirstIssue := io.isFirstIssue
   io.out.bits.isSoftPrefetch := isSoftPrefetch
+  io.out.bits.uop.SrcValue := io.in.bits.src
+
+  io.out.bits.uop.mem.addr := s0_vaddr
+  io.out.bits.uop.mem.valid := io.out.valid
+  io.out.bits.uop.mem.size := genSize(s0_uop.ctrl.fuOpType(1, 0))
+  io.out.bits.uop.mem.data := 0.U
+  io.out.bits.uop.mem.cmd  := false.B
 
   io.in.ready := !io.in.valid || (io.out.ready && io.dcacheReq.ready)
 
@@ -714,7 +721,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule with HasLoadHelper with 
   hitLoadOut.bits.debug.paddr := load_s2.io.out.bits.paddr
   hitLoadOut.bits.debug.vaddr := load_s2.io.out.bits.vaddr
   hitLoadOut.bits.fflags := DontCare
-  hitLoadOut.bits.src := DontCare
+  hitLoadOut.bits.src := load_s2.io.out.bits.uop.SrcValue
 
   load_s2.io.out.ready := true.B
 
@@ -757,6 +764,7 @@ class LoadUnit(implicit p: Parameters) extends XSModule with HasLoadHelper with 
     RegNext(io.lsq.ldout.valid) && !RegNext(io.lsq.ldout.bits.uop.robIdx.needFlush(io.redirect)) && !RegNext(hitLoadOut.valid)
 
   io.ldout.bits.uop.cf.exceptionVec(loadAccessFault) := s3_load_wb_meta_reg.uop.cf.exceptionVec(loadAccessFault) //||
+  io.ldout.bits.uop.mem.data := io.ldout.bits.data
     //RegNext(hitLoadOut.valid) && load_s2.io.s3_delayed_load_error
 
   // fast load to load forward

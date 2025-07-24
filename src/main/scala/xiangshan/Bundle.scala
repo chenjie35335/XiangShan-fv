@@ -258,6 +258,14 @@ class FvEvent(implicit p : Parameters) extends XSBundle{
   }
 }
 
+class MemSig(implicit p : Parameters) extends XSBundle{
+  val data = UInt(XLEN.W)
+  val addr = UInt(XLEN.W)
+  val size = UInt(log2Ceil(XLEN + 1).W)
+  val valid = Bool()
+  val cmd  = Bool() // true: write, false: read
+}
+
 // CfCtrl -> MicroOp at Rename Stage
 class MicroOp(implicit p: Parameters) extends CfCtrl {
   val srcState = Vec(3, SrcState())
@@ -272,6 +280,7 @@ class MicroOp(implicit p: Parameters) extends CfCtrl {
   val SrcValue = Vec(3, UInt(XLEN.W))
   val privilege = new FvPrivilege
   val privilegeNext = new FvPrivilege
+  val mem = new MemSig
   def needRfRPort(index: Int, isFp: Boolean, ignoreState: Boolean = true) : Bool = {
     val stateReady = srcState(index) === SrcState.rdy || ignoreState.B
     val readReg = if (isFp) {

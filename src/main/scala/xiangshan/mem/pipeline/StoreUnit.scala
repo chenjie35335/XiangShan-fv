@@ -56,11 +56,17 @@ class StoreUnit_S0(implicit p: Parameters) extends XSModule {
 
   io.out.bits := DontCare
   io.out.bits.vaddr := saddr
-
+  // memory of uop
+  io.out.bits.uop.mem.valid := io.in.valid
+  io.out.bits.uop.mem.addr  := saddr
+  io.out.bits.uop.mem.data  := io.in.bits.src(1)
+  io.out.bits.uop.mem.size  := genSize(sizeEncode = io.in.bits.uop.ctrl.fuOpType(1,0))
+  io.out.bits.uop.mem.cmd   := true.B
   // Now data use its own io
   // io.out.bits.data := genWdata(io.in.bits.src(1), io.in.bits.uop.ctrl.fuOpType(1,0))
   io.out.bits.data := io.in.bits.src(1) // FIXME: remove data from pipeline
   io.out.bits.uop := io.in.bits.uop
+  io.out.bits.uop.SrcValue := io.in.bits.src
   io.out.bits.miss := DontCare
   io.out.bits.rsIdx := io.rsIdx
   io.out.bits.mask := genWmask(io.out.bits.vaddr, io.in.bits.uop.ctrl.fuOpType(1,0))
@@ -193,7 +199,7 @@ class StoreUnit_S3(implicit p: Parameters) extends XSModule {
   io.stout.bits.debug.vaddr := io.in.bits.vaddr
   io.stout.bits.debug.isPerfCnt := false.B
   io.stout.bits.fflags := DontCare
-  io.stout.bits.src := DontCare
+  io.stout.bits.src := io.in.bits.uop.SrcValue
 
 }
 
