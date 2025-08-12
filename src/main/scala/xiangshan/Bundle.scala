@@ -233,6 +233,7 @@ class FvCSR(implicit p : Parameters) extends XSBundle{ // Zicsr不会影响特�
   val mvendorid = UInt(XLEN.W)
   val mimpid    = UInt(XLEN.W)
   val mhartid   = UInt(XLEN.W)
+  val privilegeMode = UInt(2.W)
  // val misa      = UInt(XLEN.W)
   def wireInit() : FvCSR = {
     val csr = new FvCSR()
@@ -278,8 +279,6 @@ class MicroOp(implicit p: Parameters) extends CfCtrl {
   val eliminatedMove = Bool()
   val debugInfo = new PerfDebugInfo
   val SrcValue = Vec(3, UInt(XLEN.W))
-  val privilege = new FvPrivilege
-  val privilegeNext = new FvPrivilege
   val mem = new MemSig
   def needRfRPort(index: Int, isFp: Boolean, ignoreState: Boolean = true) : Bool = {
     val stateReady = srcState(index) === SrcState.rdy || ignoreState.B
@@ -383,6 +382,8 @@ class ExuOutput(implicit p: Parameters) extends XSBundle {
   val redirect = new Redirect
   val debug = new DebugBundle
   val src = Vec(3, UInt(XLEN.W))
+  val privilege = new FvPrivilege
+  val privilegeNext = new FvPrivilege
 }
 
 class ExternalInterruptIO(implicit p: Parameters) extends XSBundle {

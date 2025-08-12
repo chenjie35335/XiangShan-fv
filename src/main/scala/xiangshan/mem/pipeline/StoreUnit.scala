@@ -200,6 +200,8 @@ class StoreUnit_S3(implicit p: Parameters) extends XSModule {
   io.stout.bits.debug.isPerfCnt := false.B
   io.stout.bits.fflags := DontCare
   io.stout.bits.src := io.in.bits.uop.SrcValue
+  io.stout.bits.privilege := DontCare
+  io.stout.bits.privilegeNext := DontCare
 
 }
 

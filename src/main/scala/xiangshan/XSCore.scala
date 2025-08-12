@@ -250,7 +250,7 @@ class XSCoreImp(outer: XSCoreBase) extends LazyModuleImp(outer)
     val l2_pf_enable = Output(Bool())
     val perfEvents = Input(Vec(numPCntHc * coreParams.L2NBanks, new PerfEvent))
     val beu_errors = Output(new XSL1BusErrors())
-    val index = Input(UInt(1.W))
+    val index = Input(UInt(log2Ceil(coreParams.CommitWidth).W))
     val instr = Input(Vec(DecodeWidth, UInt(32.W)))
   })
 

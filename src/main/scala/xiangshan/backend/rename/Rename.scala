@@ -91,19 +91,17 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
     */
   val uops = Wire(Vec(RenameWidth, new MicroOp))
   uops.foreach( uop => {
-    uop.srcState(0) := DontCare
-    uop.srcState(1) := DontCare
-    uop.srcState(2) := DontCare
-    uop.robIdx := DontCare
-    uop.debugInfo := DontCare
-    uop.lqIdx := DontCare
-    uop.sqIdx := DontCare
-    uop.SrcValue(0) := DontCare
-    uop.SrcValue(1) := DontCare
-    uop.SrcValue(2) := DontCare
-    uop.privilegeNext.csr := 0.U.asTypeOf(new FvCSR())
-    uop.privilege.csr := 0.U.asTypeOf(new FvCSR())
-    uop.mem := 0.U.asTypeOf(new MemSig())
+    uop.srcState(0)       := DontCare
+    uop.srcState(1)       := DontCare
+    uop.srcState(2)       := DontCare
+    uop.robIdx            := DontCare
+    uop.debugInfo         := DontCare
+    uop.lqIdx             := DontCare
+    uop.sqIdx             := DontCare
+    uop.SrcValue(0)       := DontCare
+    uop.SrcValue(1)       := DontCare
+    uop.SrcValue(2)       := DontCare
+    uop.mem               := DontCare
   })
 
   val needFpDest = Wire(Vec(RenameWidth, Bool()))
@@ -117,11 +115,11 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
 
   // uop calculation
   for (i <- 0 until RenameWidth) {
-    uops(i).cf := io.in(i).bits.cf
-    uops(i).ctrl := io.in(i).bits.ctrl
-    uops(i).SrcValue(0) := 0.U
-    uops(i).SrcValue(1) := 0.U
-    uops(i).SrcValue(2) := 0.U
+    uops(i).cf          := io.in(i).bits.cf
+    uops(i).ctrl        := io.in(i).bits.ctrl
+    uops(i).SrcValue(0) := DontCare
+    uops(i).SrcValue(1) := DontCare
+    uops(i).SrcValue(2) := DontCare
 
 
     // update cf according to ssit result

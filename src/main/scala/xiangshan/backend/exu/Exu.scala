@@ -257,6 +257,8 @@ abstract class Exu(cfg: ExuConfig)(implicit p: Parameters) extends XSModule {
     out.debug.paddr := DontCare
     out.redirect <> DontCare
     out.redirectValid := false.B
+    out.privilegeNext <> DontCare
+    out.privilege <> DontCare
   }
 
   assignDontCares(io.out.bits)

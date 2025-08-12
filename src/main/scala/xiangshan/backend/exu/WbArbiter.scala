@@ -40,6 +40,8 @@ class ExuWbArbiter(n: Int, hasFastUopOut: Boolean, fastVec: Seq[Boolean])(implic
     val redirect = new Redirect
     val debug = new DebugBundle
     val src = Vec(3, UInt(XLEN.W))
+    val privilege = new FvPrivilege
+    val privilegeNext = new FvPrivilege
   }
   val ctrl_arb = Module(new Arbiter(new ExuCtrl, n))
   val data_arb = Module(new Arbiter(UInt((XLEN+1).W), n))
@@ -69,6 +71,8 @@ class ExuWbArbiter(n: Int, hasFastUopOut: Boolean, fastVec: Seq[Boolean])(implic
   if (hasFastUopOut) {// 这个地方意思出错
     val uop = ctrl_arb.io.out.bits.uop
     val src = ctrl_arb.io.out.bits.src
+    val privilege = ctrl_arb.io.out.bits.privilege
+    val privilegeNext = ctrl_arb.io.out.bits.privilegeNext
     io.out.valid := RegNext(ctrl_arb.io.out.valid && !uop.robIdx.needFlush(io.redirect))
     // When hasFastUopOut, only uop comes at the same cycle with valid.
     // Other bits like data, fflags come at the next cycle after valid,
@@ -79,6 +83,8 @@ class ExuWbArbiter(n: Int, hasFastUopOut: Boolean, fastVec: Seq[Boolean])(implic
     // uop comes at the same cycle with valid and only RegNext is needed.
     io.out.bits.uop := RegEnable(uop, ctrl_arb.io.out.valid)
     io.out.bits.src := RegEnable(src, ctrl_arb.io.out.valid)
+    io.out.bits.privilege := RegEnable(privilege, ctrl_arb.io.out.valid)
+    io.out.bits.privilegeNext := RegEnable(privilegeNext, ctrl_arb.io.out.valid)
   }
 }
 
@@ -175,7 +181,9 @@ class WbArbiterImp(outer: WbArbiter)(implicit p: Parameters) extends LazyModuleI
         // When hasFastUopOut, only uop comes at the same cycle with valid.
         out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect),false.B)
         out.bits.uop := RegEnable(in.bits.uop, 0.U.asTypeOf(new MicroOp()),in.valid)
-        out.bits.src := RegEnable(in.bits.uop.SrcValue,in.valid)
+        out.bits.src := RegEnable(in.bits.src,in.valid)
+        out.bits.privilege := RegEnable(in.bits.privilege, in.valid)
+        out.bits.privilegeNext := RegEnable(in.bits.privilegeNext, in.valid)
       }
       if (outer.needRegNext(i)) {
         out.valid := RegNext(in.valid && !in.bits.uop.robIdx.needFlush(redirect),false.B)
@@ -203,6 +211,8 @@ class WbArbiterImp(outer: WbArbiter)(implicit p: Parameters) extends LazyModuleI
           buffer_out.valid := ctrl_pipe.valid
           buffer_out.bits := buffer.extra.out
           buffer_out.bits.uop := ctrl_pipe.bits.uop
+          buffer_out.bits.privilegeNext := ctrl_pipe.bits.privilegeNext
+          buffer_out.bits.privilege := ctrl_pipe.bits.privilege
           buffer_out
         }
         else {

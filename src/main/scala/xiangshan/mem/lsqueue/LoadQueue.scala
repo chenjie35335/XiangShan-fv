@@ -472,6 +472,8 @@ class LoadQueue(implicit p: Parameters) extends XSModule
     io.ldout(i).bits.debug.paddr := debug_paddr(loadWbSel(i))
     io.ldout(i).bits.debug.vaddr := vaddrModule.io.rdata(i+1)
     io.ldout(i).bits.fflags := DontCare
+    io.ldout(i).bits.privilege := DontCare
+    io.ldout(i).bits.privilegeNext := DontCare
     io.ldout(i).valid := loadWbSelV(i) && !io.ldout(i).bits.uop.robIdx.needFlush(lastCycleRedirect)
 
     // merged data, uop and offset for data sel in load_s3

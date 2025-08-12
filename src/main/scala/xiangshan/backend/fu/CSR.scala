@@ -116,6 +116,9 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   with SdtrigExt with DebugCSR
 {
   val csrio = IO(new CSRFileIO)
+  // pipeline follower
+  val privilege     = IO(DecoupledIO(new FvPrivilege))
+  val privilegeNext = IO(DecoupledIO(new FvPrivilege))
 
   val cfIn = io.in.bits.uop.cf
   val cfOut = Wire(new CtrlFlow)
@@ -845,6 +848,8 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     illegalRetTarget := true.B // when illegalRetTarget setted, retTarget should never be used
   }
 
+  val mstatus_ret = WireInit(0.U(XLEN.W))
+  val mode_ret = WireInit(0.U(XLEN.W))
   // Mux tree for regs
   when (valid) {
     when (isDret) {
@@ -866,6 +871,8 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
       mstatusNew.mpp := ModeU
       when (mstatusOld.mpp =/= ModeM) { mstatusNew.mprv := 0.U }
       mstatus := mstatusNew.asUInt
+      mstatus_ret := mstatusNew.asUInt
+      mode_ret := mstatusOld.mpp
     }.elsewhen(isSret && !illegalSret && !illegalSModeSret) {
       val mstatusOld = WireInit(mstatus.asTypeOf(new MstatusStruct))
       val mstatusNew = WireInit(mstatus.asTypeOf(new MstatusStruct))
@@ -873,8 +880,10 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
       priviledgeMode := Cat(0.U(1.W), mstatusOld.spp)
       mstatusNew.pie.s := true.B
       mstatusNew.spp := ModeU
-      mstatus := mstatusNew.asUInt
-      when (mstatusOld.spp =/= ModeM) { mstatusNew.mprv := 0.U }
+      mstatus := mstatusNew.asUInt // mstatus在这里就没有写上
+      mstatus_ret := mstatusNew.asUInt
+      mode_ret := Cat(0.U(1.W), mstatusOld.spp)
+      when (mstatusOld.spp =/= ModeM) { mstatusNew.mprv := 0.U } //这里有bug
     }.elsewhen(isUret) {
       val mstatusOld = WireInit(mstatus.asTypeOf(new MstatusStruct))
       val mstatusNew = WireInit(mstatus.asTypeOf(new MstatusStruct))
@@ -1184,7 +1193,8 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
   }
   // for formal verification
   // formal verification
-  if(env.EnableFormal) {
+ // if(env.EnableFormal) {
+  if(true) {
     val fvCSR = WireInit(0.U.asTypeOf(new FvCSR()))
     fvCSR.mstatus := mstatus
     fvCSR.mepc := mepc
@@ -1203,6 +1213,7 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     fvCSR.mvendorid := mvendorid
     fvCSR.mimpid := mimpid
     fvCSR.mhartid := mhartid
+    fvCSR.privilegeMode := priviledgeMode
     BoringUtils.addSource(fvCSR, "exceptionCSR")
     //fvCSR.misa  := misa
     val fvCSRNext = Wire(new FvCSR())
@@ -1278,6 +1289,10 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
           r := ndata
         }
     }
+    when(isSret || isDret) {
+      fvCSRNext.mstatus := mstatus_ret
+      fvCSRNext.privilegeMode := mode_ret
+    }
     // formal assume
     val csrExits = WireInit(false.B)
     csrExits := formal_csrNext_mapping.keys.map(
@@ -1287,21 +1302,17 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
       assume(csrExits)
     }
     BoringUtils.addSource(fvCSRNextException, "exceptionCSRNext")
-    io.out.bits.uop.privilege.csr := fvCSR
-    io.out.bits.uop.privilegeNext.csr := fvCSRNext
+    privilege.bits.csr := fvCSR
+    privilegeNext.bits.csr := fvCSRNext
+    privilege.valid := io.out.valid
+    privilegeNext.valid := io.out.valid
     // privileged Mode
-    val Mode = ConnectCheckerWb.makeModeSource()(64, env.rvConfig)
-    Mode := priviledgeMode
-    val ModeNext = ConnectCheckerWb.makeModeNextSource()(64, env.rvConfig)
-    ModeNext := Mux(hasExceptionIntr, mode_exc, priviledgeMode)
+    BoringUtils.addSource(priviledgeMode, "ex_mode")
+    BoringUtils.addSource(Mux(hasExceptionIntr, mode_exc, priviledgeMode), "ex_modeNext")
     //
     //
 
-    def readWithScala(addr: Int): UInt = mapping(addr)._1
-
-    val difftestIntrNO = Mux(hasIntr, causeNO, 0.U)
-
-    val IntrNoFv = difftestIntrNO
+    val IntrNoFv = Mux(hasIntr, causeNO, 0.U)
     val CauseFv = Mux(csrio.exception.valid, causeNO, 0.U)
     val ValidFv = csrio.exception.valid
     val ExceptionPCFv = dexceptionPC
@@ -1313,6 +1324,9 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     BoringUtils.addSource(ExceptionPCFv, "exceptionPCFv")
     BoringUtils.addSource(ExceptionInstFv, "exceptionInstFv")
   }
+  def readWithScala(addr: Int): UInt = mapping(addr)._1
+
+  val difftestIntrNO = Mux(hasIntr, causeNO, 0.U)
   // Always instantiate basic difftest modules.
   if (env.AlwaysBasicDiff || env.EnableDifftest) {
     val difftest = Module(new DifftestArchEvent)

@@ -314,7 +314,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   // instvalid field
   val valid = RegInit(VecInit(Seq.fill(RobSize)(false.B)))
   // writeback status
-  val writebacked = Mem(RobSize, Bool())
+  val writebacked = RegInit(VecInit(Seq.fill(RobSize)(false.B)))
   val store_data_writebacked = Mem(RobSize, Bool())
   // data for redirect, exception, etc.
   val flagBkup = Mem(RobSize, Bool())
@@ -327,6 +327,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   val debug_microOp = Mem(RobSize, new MicroOp)
   val debug_exuSrc  = Reg(Vec(RobSize, Vec(3, UInt(XLEN.W))))
   val debug_exuData = Reg(Vec(RobSize, UInt(XLEN.W)))//for debug
+  val debug_exuCSR     = Reg(Vec(RobSize, new FvPrivilege()))
+  val debug_exuCSRNext = Reg(Vec(RobSize, new FvPrivilege()))
   val debug_exuDebug = Reg(Vec(RobSize, new DebugBundle))//for debug
   val debug_npc = RegInit(VecInit(Seq.fill(RobSize)(0.U(VAddrBits.W))))
   val debug_redirect = Reg(Vec(RobSize, Bool()))
@@ -457,7 +459,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     */
   for (wb <- exuWriteback) {
     when (wb.valid) {
-      val wbIdx = wb.bits.uop.robIdx.value
+      val wbIdx = wb.bits.uop.robIdx.value - 1.U
       debug_exuData(wbIdx) := wb.bits.data
       debug_exuDebug(wbIdx) := wb.bits.debug
       debug_exuSrc(wbIdx) := wb.bits.src
@@ -465,9 +467,9 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(wbIdx).debugInfo.selectTime := wb.bits.uop.debugInfo.selectTime
       debug_microOp(wbIdx).debugInfo.issueTime := wb.bits.uop.debugInfo.issueTime
       debug_microOp(wbIdx).debugInfo.writebackTime := wb.bits.uop.debugInfo.writebackTime
-      debug_microOp(wbIdx).privilegeNext := wb.bits.uop.privilegeNext
-      debug_microOp(wbIdx).privilege := wb.bits.uop.privilege
-      debug_microOp(wbIdx).mem := wb.bits.uop.mem
+      debug_exuCSRNext(wbIdx) := wb.bits.privilegeNext
+      debug_exuCSR(wbIdx) := wb.bits.privilege
+      //debug_microOp(wbIdx).mem := wb.bits.uop.mem
       //debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
 
       val debug_Uop = debug_microOp(wbIdx)
@@ -805,7 +807,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   // writeback logic set numWbPorts writebacked to true
   for ((wb, cfgs) <- exuWriteback.zip(wbExuConfigs(exeWbSel))) {
     when (wb.valid) {
-      val wbIdx = wb.bits.uop.robIdx.value
+      val wbIdx = wb.bits.uop.robIdx.value - 1.U
       val wbHasException = ExceptionNO.selectByExu(wb.bits.uop.cf.exceptionVec, cfgs).asUInt.orR
       val wbHasTriggerCanFire = if (cfgs.exists(_.trigger)) wb.bits.uop.cf.trigger.getBackendCanFire else false.B
       val wbHasFlushPipe = cfgs.exists(_.flushPipe).B && wb.bits.uop.ctrl.flushPipe
@@ -953,6 +955,11 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
 
   val commitDebugUop = deqPtrVec.map(_.value).map(debug_microOp(_))
   val commitDebugNpc = deqPtrVec.map(_.value).map(debug_npc(_))
+  val commitDebugCSR = deqPtrVec.map(_.value).map(debug_exuCSR(_))
+  val commitDebugCSRNext = deqPtrVec.map(_.value).map(debug_exuCSRNext(_))
+  val commitDebugData = deqPtrVec.map(_.value).map(debug_exuData(_))
+  val commitDebugRs1 = deqPtrVec.map(_.value).map(debug_exuSrc(_)(0))
+  val commitDebugRs2 = deqPtrVec.map(_.value).map(debug_exuSrc(_)(1))
   XSPerfAccumulate("clock_cycle", 1.U)
   QueuePerf(RobSize, PopCount((0 until RobSize).map(valid(_))), !allowEnqueue)
   XSPerfAccumulate("commitUop", ifCommit(commitCnt))
@@ -1025,26 +1032,27 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     wpc(i) := SignExt(commitDebugUop(i).cf.pc, XLEN)
   }
 
-  if(env.EnableFormal) {
+  //if(env.EnableFormal) {
+  if(true) {
     val checker = Module(new CheckerWithWB(checkMem = true, enableReg = false, checkNPC = true)(env.rvConfig))
-    def FvCSR2CSR(fvCSR: FvCSR, csr: CSR, csrExp: FvCSR, IsException: Bool) = {
-      //csr.mstatus   := Mux(IsException, csrExp.mstatus  ,fvCSR.mstatus  )
-      csr.mepc      := Mux(IsException, csrExp.mepc     ,fvCSR.mepc     )
-      csr.sepc      := Mux(IsException, csrExp.sepc     ,fvCSR.sepc     )
-      csr.mtval     := Mux(IsException, csrExp.mtval    ,fvCSR.mtval    )
-      csr.stval     := Mux(IsException, csrExp.stval    ,fvCSR.stval    )
-      csr.mcause    := Mux(IsException, csrExp.mcause   ,fvCSR.mcause   )
-      csr.scause    := Mux(IsException, csrExp.scause   ,fvCSR.scause   )
-      csr.satp      := Mux(IsException, csrExp.satp     ,fvCSR.satp     )
-      csr.mscratch  := Mux(IsException, csrExp.mscratch ,fvCSR.mscratch )
-      csr.sscratch  := Mux(IsException, csrExp.sscratch ,fvCSR.sscratch )
-      csr.mideleg   := Mux(IsException, csrExp.mideleg  ,fvCSR.mideleg  )
-      csr.medeleg   := Mux(IsException, csrExp.medeleg  ,fvCSR.medeleg  )
-      csr.marchid   := Mux(IsException, csrExp.marchid  ,fvCSR.marchid  )
-      csr.mvendorid := Mux(IsException, csrExp.mvendorid,fvCSR.mvendorid)
-      csr.mimpid    := Mux(IsException, csrExp.mimpid   ,fvCSR.mimpid   )
-      csr.mhartid   := Mux(IsException, csrExp.mhartid  ,fvCSR.mhartid  )
-      csr.mtvec     := Mux(IsException, csrExp.mtvec    ,fvCSR.mtvec    )
+    def FvCSR2CSR(fvCSR: FvCSR, csr: CSR, csrExp: FvCSR, IsCsrOp: Bool) = {
+      csr.mstatus   := Mux(IsCsrOp, fvCSR.mstatus  , csrExp.mstatus  )
+      csr.mepc      := Mux(IsCsrOp, fvCSR.mepc     , csrExp.mepc     )
+      csr.sepc      := Mux(IsCsrOp, fvCSR.sepc     , csrExp.sepc     )
+      csr.mtval     := Mux(IsCsrOp, fvCSR.mtval    , csrExp.mtval    )
+      csr.stval     := Mux(IsCsrOp, fvCSR.stval    , csrExp.stval    )
+      csr.mcause    := Mux(IsCsrOp, fvCSR.mcause   , csrExp.mcause   )
+      csr.scause    := Mux(IsCsrOp, fvCSR.scause   , csrExp.scause   )
+      csr.satp      := Mux(IsCsrOp, fvCSR.satp     , csrExp.satp     )
+      csr.mscratch  := Mux(IsCsrOp, fvCSR.mscratch , csrExp.mscratch )
+      csr.sscratch  := Mux(IsCsrOp, fvCSR.sscratch , csrExp.sscratch )
+      csr.mideleg   := Mux(IsCsrOp, fvCSR.mideleg  , csrExp.mideleg  )
+      csr.medeleg   := Mux(IsCsrOp, fvCSR.medeleg  , csrExp.medeleg  )
+      csr.marchid   := Mux(IsCsrOp, fvCSR.marchid  , csrExp.marchid  )
+      csr.mvendorid := Mux(IsCsrOp, fvCSR.mvendorid, csrExp.mvendorid)
+      csr.mimpid    := Mux(IsCsrOp, fvCSR.mimpid   , csrExp.mimpid   )
+      csr.mhartid   := Mux(IsCsrOp, fvCSR.mhartid  , csrExp.mhartid  )
+      csr.mtvec     := Mux(IsCsrOp, fvCSR.mtvec    , csrExp.mtvec    )
      // csr.misa     := fvCSR.misa
     }
     val index = WireInit(0.U)
@@ -1056,8 +1064,28 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     val selectNpc = (0 until CommitWidth).map{
       i => ((index === i.U) -> commitDebugNpc(i))
     }
+    val selectCSR = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugCSR(i))
+    }
+    val selectCSRNext = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugCSRNext(i))
+    }
+    val selectData = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugData(i))
+    }
+    val selectRs1 = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugRs1(i))
+    }
+    val selectRs2 = (0 until CommitWidth).map{
+      i => ((index === i.U) -> commitDebugRs2(i))
+    }
     val SelUop = MuxCase(0.U.asTypeOf(new MicroOp()), selectSeq)
     val SelNpc = MuxCase(0.U(VAddrBits.W), selectNpc)
+    val SelCSR = MuxCase(0.U.asTypeOf(new FvPrivilege()),selectCSR)
+    val SelCSRNext = MuxCase(0.U.asTypeOf(new FvPrivilege()),selectCSRNext)
+    val SelData = MuxCase(0.U(XLEN.W), selectData)
+    val SelRs1 = MuxCase(0.U(XLEN.W), selectRs1)
+    val SelRs2 = MuxCase(0.U(XLEN.W), selectRs2)
   //首先我们需要考虑的问题是npc怎么弄的问题
     // 当然分为两个部分： 第一个是预译码的时候，然后是后端提交的时候，这会引起nextpc的变化，因此需要考虑这两个结构来获取npc
     // ftq中存储的信息大部分是和分支预测相关的， 如果想要转换成nextpc将会非常复杂，感觉这里还是说要在rob这里和流水线那里就把nextpc
@@ -1071,10 +1099,10 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     checker.io.wb.r1Addr        := SelUop.ctrl.lsrc(0)
     checker.io.wb.r2Addr        := SelUop.ctrl.lsrc(1)
     // 这个data的数据是存在问题的， 首先有fusion的运算
-    checker.io.wb.data          := debug_exuData(deqPtrVec(index).value)
+    checker.io.wb.data          := SelData
     // 想办法说把这两个数据从流水线中传递过来
-    checker.io.wb.r1Data        := Mux(SelUop.ctrl.srcType(0) === SrcType.reg,debug_exuSrc(deqPtrVec(index).value)(0), 0.U) // this two has to be move from pipeline
-    checker.io.wb.r2Data        := Mux(SelUop.ctrl.srcType(1) === SrcType.reg,debug_exuSrc(deqPtrVec(index).value)(1), 0.U)
+    checker.io.wb.r1Data        := Mux(SelUop.ctrl.srcType(0) === SrcType.reg, SelRs1, 0.U) // this two has to be move from pipeline
+    checker.io.wb.r2Data        := Mux(SelUop.ctrl.srcType(1) === SrcType.reg, SelRs2, 0.U)
     // the old connection of Zicsr instruction
 //    checker.io.wb.csrAddr       := 0.U
 //    checker.io.wb.csrNdata      := 0.U
@@ -1103,8 +1131,17 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     event_fv.exceptionPC  := Mux(IsSelectEvent, event_exceptionPC  , 0.U)
     event_fv.cause        := Mux(IsSelectEvent, event_cause        , 0.U)
     event_fv.intrNO       := Mux(IsSelectEvent, event_intrNO       , 0.U)
-    FvCSR2CSR(SelUop.privilege.csr, csr_fv, csrExc_fv, IsSelectEvent && event_valid)
-    FvCSR2CSR(SelUop.privilegeNext.csr, csrNext_fv, csrExcNext_fv, IsSelectEvent && event_valid)
+    // 这个地方应该反过来，只有当
+    FvCSR2CSR(SelCSR.csr, csr_fv, csrExc_fv, SelUop.ctrl.fuType === FuType.csr)
+    FvCSR2CSR(SelCSRNext.csr, csrNext_fv, csrExcNext_fv, SelUop.ctrl.fuType === FuType.csr)
+    val ex_mode = WireInit(0.U(2.W))
+    val ex_modeNext = WireInit(0.U(2.W))
+    BoringUtils.addSink(ex_mode, "ex_mode")
+    BoringUtils.addSink(ex_modeNext, "ex_modeNext")
+    val Mode = ConnectCheckerWb.makeModeSource()(64, env.rvConfig)
+    Mode := Mux(event_fv.valid, ex_mode, SelCSR.csr.privilegeMode)
+    val ModeNext = ConnectCheckerWb.makeModeNextSource()(64, env.rvConfig)
+    ModeNext := Mux(event_fv.valid, ex_modeNext, SelCSRNext.csr.privilegeMode)
     //  liveness
     val count = RegInit(0.U)
     count := count + 1.U

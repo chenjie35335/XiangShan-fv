@@ -722,6 +722,8 @@ class LoadUnit(implicit p: Parameters) extends XSModule with HasLoadHelper with 
   hitLoadOut.bits.debug.vaddr := load_s2.io.out.bits.vaddr
   hitLoadOut.bits.fflags := DontCare
   hitLoadOut.bits.src := load_s2.io.out.bits.uop.SrcValue
+  hitLoadOut.bits.privilege := DontCare
+  hitLoadOut.bits.privilegeNext := DontCare
 
   load_s2.io.out.ready := true.B
 

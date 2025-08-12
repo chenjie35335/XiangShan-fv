@@ -21,7 +21,7 @@ import chisel3.util._
 import chisel3.util.experimental.BoringUtils
 import device.EnableFormal
 import freechips.rocketchip.diplomacy.{LazyModule, LazyModuleImp}
-import rvspeccore.checker.{RVB, RVI, RVM, RVZicsr}
+import rvspeccore.checker.{RVB, RVI, RVM, RVPrivileged, RVZicsr}
 import utils._
 import xiangshan._
 import xiangshan.backend.fu.{PFEvent, PMP, PMPChecker, PMPReqBundle}
@@ -131,7 +131,7 @@ class FakeFrontendImp(outer: FakeFrontend) extends LazyModuleImp(outer) with Has
           RVI.loadStore(io.backend.cfVec(i).bits.instr) ||
           RVB.zba(io.backend.cfVec(i).bits.instr) || RVB.zbb(io.backend.cfVec(i).bits.instr) ||
           RVB.zbc(io.backend.cfVec(i).bits.instr) || RVB.zbkb(io.backend.cfVec(i).bits.instr) || RVB.zbkc(io.backend.cfVec(i).bits.instr) || RVB.zbkx(io.backend.cfVec(i).bits.instr) ||
-          RVZicsr.reg(io.backend.cfVec(i).bits.instr) || RVZicsr.imm(io.backend.cfVec(i).bits.instr)
+          RVZicsr.reg(io.backend.cfVec(i).bits.instr) || RVZicsr.imm(io.backend.cfVec(i).bits.instr) || RVPrivileged.trap_return(io.backend.cfVec(i).bits.instr)
       )
       //|| RVM.mulOp(io.backend.cfVec(i).bits.instr) || RVM.divOp(io.backend.cfVec(i).bits.instr))
     }
