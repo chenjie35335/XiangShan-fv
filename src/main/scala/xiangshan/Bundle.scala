@@ -234,6 +234,7 @@ class FvCSR(implicit p : Parameters) extends XSBundle{ // Zicsr不会影响特�
   val mimpid    = UInt(XLEN.W)
   val mhartid   = UInt(XLEN.W)
   val privilegeMode = UInt(2.W)
+  val retTarget = UInt(VAddrBits.W)
  // val misa      = UInt(XLEN.W)
   def wireInit() : FvCSR = {
     val csr = new FvCSR()

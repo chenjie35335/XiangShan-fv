@@ -1289,9 +1289,10 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
           r := ndata
         }
     }
-    when(isSret || isDret) {
+    when(isSret || isMret) {
       fvCSRNext.mstatus := mstatus_ret
       fvCSRNext.privilegeMode := mode_ret
+      fvCSRNext.retTarget := retTarget
     }
     // formal assume
     val csrExits = WireInit(false.B)

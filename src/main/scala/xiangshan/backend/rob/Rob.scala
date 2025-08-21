@@ -459,7 +459,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     */
   for (wb <- exuWriteback) {
     when (wb.valid) {
-      val wbIdx = wb.bits.uop.robIdx.value - 1.U
+      val wbIdx = wb.bits.uop.robIdx.value
       debug_exuData(wbIdx) := wb.bits.data
       debug_exuDebug(wbIdx) := wb.bits.debug
       debug_exuSrc(wbIdx) := wb.bits.src
@@ -469,7 +469,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
       debug_microOp(wbIdx).debugInfo.writebackTime := wb.bits.uop.debugInfo.writebackTime
       debug_exuCSRNext(wbIdx) := wb.bits.privilegeNext
       debug_exuCSR(wbIdx) := wb.bits.privilege
-      //debug_microOp(wbIdx).mem := wb.bits.uop.mem
+      //debug_exuCSR(wbIdx).csr.privilegeMode := wb.bits.privilege.csr.privilegeMode
+      debug_microOp(wbIdx).mem := wb.bits.uop.mem
       //debug_npc(wbIdx) := wb.bits.uop.cf.pc + 4.U
 
       val debug_Uop = debug_microOp(wbIdx)
@@ -807,7 +808,7 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
   // writeback logic set numWbPorts writebacked to true
   for ((wb, cfgs) <- exuWriteback.zip(wbExuConfigs(exeWbSel))) {
     when (wb.valid) {
-      val wbIdx = wb.bits.uop.robIdx.value - 1.U
+      val wbIdx = wb.bits.uop.robIdx.value
       val wbHasException = ExceptionNO.selectByExu(wb.bits.uop.cf.exceptionVec, cfgs).asUInt.orR
       val wbHasTriggerCanFire = if (cfgs.exists(_.trigger)) wb.bits.uop.cf.trigger.getBackendCanFire else false.B
       val wbHasFlushPipe = cfgs.exists(_.flushPipe).B && wb.bits.uop.ctrl.flushPipe
@@ -1092,7 +1093,15 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     // 保留在microOp当中
     checker.io.instCommit.valid := io.commits.commitValid(index) && io.commits.isCommit
     checker.io.instCommit.pc    := SignExt(SelUop.cf.pc, XLEN)
-    checker.io.instCommit.npc   := Mux(io.redirect.valid && io.redirect.bits.robIdx === SelUop.robIdx, io.redirect.bits.cfiUpdate.target, SelNpc)
+    checker.io.instCommit.npc   := Mux(
+      io.redirect.valid && io.redirect.bits.robIdx === SelUop.robIdx,
+      io.redirect.bits.cfiUpdate.target,
+      Mux(
+        SelUop.ctrl.fuType === FuType.csr && SelUop.ctrl.fuOpType === CSROpType.jmp,
+        SelCSRNext.csr.retTarget,
+        SelNpc
+      )
+    )
     checker.io.instCommit.inst  := SelUop.cf.instr
     checker.io.wb.valid         := io.commits.commitValid(index) && io.commits.info(index).rfWen && io.commits.info(index).ldest =/= 0.U
     checker.io.wb.dest          := io.commits.info(index).ldest
@@ -1107,8 +1116,6 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
 //    checker.io.wb.csrAddr       := 0.U
 //    checker.io.wb.csrNdata      := 0.U
 //    checker.io.wb.csrWr         := false.B
-    val csr_fv = ConnectCheckerWb.makeCSRSource()(XLEN, env.rvConfig)
-    val csrNext_fv = ConnectCheckerWb.makeCSRNextSource()(XLEN, env.rvConfig)
     val csrExc_fv = WireInit(0.U.asTypeOf(new FvCSR()))
     val csrExcNext_fv = WireInit(0.U.asTypeOf(new FvCSR))
     BoringUtils.addSink(csrExc_fv, "exceptionCSR")
@@ -1131,17 +1138,22 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     event_fv.exceptionPC  := Mux(IsSelectEvent, event_exceptionPC  , 0.U)
     event_fv.cause        := Mux(IsSelectEvent, event_cause        , 0.U)
     event_fv.intrNO       := Mux(IsSelectEvent, event_intrNO       , 0.U)
-    // 这个地方应该反过来，只有当
-    FvCSR2CSR(SelCSR.csr, csr_fv, csrExc_fv, SelUop.ctrl.fuType === FuType.csr)
-    FvCSR2CSR(SelCSRNext.csr, csrNext_fv, csrExcNext_fv, SelUop.ctrl.fuType === FuType.csr)
+    // privilegeMode
     val ex_mode = WireInit(0.U(2.W))
     val ex_modeNext = WireInit(0.U(2.W))
     BoringUtils.addSink(ex_mode, "ex_mode")
     BoringUtils.addSink(ex_modeNext, "ex_modeNext")
     val Mode = ConnectCheckerWb.makeModeSource()(64, env.rvConfig)
-    Mode := Mux(event_fv.valid, ex_mode, SelCSR.csr.privilegeMode)
+    //Mode := Mux(event_fv.valid, ex_mode, SelCSR.csr.privilegeMode)
+    Mode := Mux(SelUop.ctrl.fuType === FuType.csr, SelCSR.csr.privilegeMode, ex_mode)
     val ModeNext = ConnectCheckerWb.makeModeNextSource()(64, env.rvConfig)
-    ModeNext := Mux(event_fv.valid, ex_modeNext, SelCSRNext.csr.privilegeMode)
+    //ModeNext := Mux(event_fv.valid, ex_modeNext, SelCSRNext.csr.privilegeMode)
+    ModeNext := Mux(SelUop.ctrl.fuType === FuType.csr, SelCSRNext.csr.privilegeMode, ex_modeNext)
+    // CSR
+    val csr_fv = ConnectCheckerWb.makeCSRSource()(XLEN, env.rvConfig)
+    val csrNext_fv = ConnectCheckerWb.makeCSRNextSource()(XLEN, env.rvConfig)
+    FvCSR2CSR(SelCSR.csr, csr_fv, csrExc_fv, SelUop.ctrl.fuType === FuType.csr)
+    FvCSR2CSR(SelCSRNext.csr, csrNext_fv, csrExcNext_fv, SelUop.ctrl.fuType === FuType.csr)
     //  liveness
     val count = RegInit(0.U)
     count := count + 1.U
@@ -1158,6 +1170,8 @@ class RobImp(outer: Rob)(implicit p: Parameters) extends LazyModuleImp(outer)
     mem.write.data      := SelUop.mem.data
     mem.write.memWidth  := SelUop.mem.size
     mem.write.addr      := SelUop.mem.addr
+    //SelNpc
+    checker.io.instCommit.npc
     ConnectCheckerWb.setChecker(checker)(64,env.rvConfig)
 
   }
