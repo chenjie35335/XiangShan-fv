@@ -79,7 +79,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
   // speculatively assign the instruction with an robIdx
   val validCount = PopCount(io.in.map(_.valid)) // number of instructions waiting to enter rob (from decode)
   val robIdxHead = RegInit(0.U.asTypeOf(new RobPtr))
-  val lastCycleMisprediction = RegNext(io.redirect.valid && !io.redirect.bits.flushItself())
+  val lastCycleMisprediction = RegNext(io.redirect.valid && !io.redirect.bits.flushItself(),false.B)
   val robIdxHeadNext = Mux(io.redirect.valid, io.redirect.bits.robIdx, // redirect: move ptr to given rob index
          Mux(lastCycleMisprediction, robIdxHead + 1.U, // mis-predict: not flush robIdx itself
                          Mux(canOut, robIdxHead + validCount, // instructions successfully entered next stage: increase robIdx
@@ -138,7 +138,7 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
 
     // no valid instruction from decode stage || all resources (dispatch1 + both free lists) ready
     io.in(i).ready := !hasValid || canOut
-
+    // 这里怎么感觉ROB这里出现了一些不对的地方？
     uops(i).robIdx := robIdxHead + PopCount(io.in.take(i).map(_.valid))
 
     uops(i).psrc(0) := Mux(uops(i).ctrl.srcType(0) === SrcType.reg, io.intReadPorts(i)(0), io.fpReadPorts(i)(0))

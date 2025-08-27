@@ -1052,8 +1052,10 @@ class CSR(implicit p: Parameters) extends FunctionUnit with HasCSRConst with PMP
     )
     when (RegNext(priviledgeMode === ModeM)) {
       mtval := tval
+      mtval_exc := tval
     }.otherwise {
       stval := tval
+      stval_exc := tval
     }
   }
 
