@@ -1,0 +1,13 @@
+diff --git a/src/main/scala/xiangshan/backend/decode/DecodeUnit.scala b/src/main/scala/xiangshan/backend/decode/DecodeUnit.scala
+index c21aa718f..c165fb12b 100644
+--- a/src/main/scala/xiangshan/backend/decode/DecodeUnit.scala
++++ b/src/main/scala/xiangshan/backend/decode/DecodeUnit.scala
+@@ -151,7 +151,7 @@ object XDecode extends DecodeConstants {
+     JAL     -> List(SrcType.pc , SrcType.imm, SrcType.X, FuType.jmp, JumpOpType.jal,   Y, N, N, N, N, N, SelImm.IMM_UJ),
+     JALR    -> List(SrcType.reg, SrcType.imm, SrcType.X, FuType.jmp, JumpOpType.jalr,  Y, N, N, N, N, N, SelImm.IMM_I),
+     BEQ     -> List(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.beq,    N, N, N, N, N, N, SelImm.IMM_SB),
+-    BNE     -> List(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.bne,    N, N, N, N, N, N, SelImm.IMM_SB),
++    BNE     -> List(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.beq,    N, N, N, N, N, N, SelImm.IMM_SB),
+     BGE     -> List(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.bge,    N, N, N, N, N, N, SelImm.IMM_SB),
+     BGEU    -> List(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.bgeu,   N, N, N, N, N, N, SelImm.IMM_SB),
+     BLT     -> List(SrcType.reg, SrcType.reg, SrcType.X, FuType.alu, ALUOpType.blt,    N, N, N, N, N, N, SelImm.IMM_SB),

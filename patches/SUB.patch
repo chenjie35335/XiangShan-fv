@@ -1,0 +1,15 @@
+diff --git a/src/main/scala/xiangshan/backend/fu/Alu.scala b/src/main/scala/xiangshan/backend/fu/Alu.scala
+index 9ab325c93..11e255dee 100644
+--- a/src/main/scala/xiangshan/backend/fu/Alu.scala
++++ b/src/main/scala/xiangshan/backend/fu/Alu.scala
+@@ -39,7 +39,9 @@ class SubModule(implicit p: Parameters) extends XSModule {
+     val src = Vec(2, Input(UInt(XLEN.W)))
+     val sub = Output(UInt((XLEN+1).W))
+   })
+-  io.sub := (io.src(0) +& (~io.src(1)).asUInt()) + 1.U
++  val subResult = Wire(UInt(XLEN.W))
++  subResult := (io.src(0) +& (~io.src(1)).asUInt()) + 1.U
++  io.sub := Cat(0.U(1.W),subResult(XLEN-2,0))
+ }
+ 
+ class LeftShiftModule(implicit p: Parameters) extends XSModule {

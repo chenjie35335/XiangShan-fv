@@ -121,6 +121,8 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
     uops(i).SrcValue(1) := DontCare
     uops(i).SrcValue(2) := DontCare
 
+    uops(i).mem       := DontCare
+    uops(i).mem.valid := false.B
 
     // update cf according to ssit result
     uops(i).cf.storeSetHit := io.ssit(i).valid
@@ -171,6 +173,10 @@ class Rename(implicit p: Parameters) extends XSModule with HasPerfEvents {
       io.out(i).bits.ctrl.imm := Cat(io.in(i).bits.ctrl.lsrc(1), io.in(i).bits.ctrl.lsrc(0))
     }
     // dirty code for SoftPrefetch (prefetch.r/prefetch.w)
+    // this part can't be verify by our tools
+    if(env.EnableFormal) {
+      assume(io.in(i).bits.ctrl.isSoftPrefetch === false.B)
+    }
     when (io.in(i).bits.ctrl.isSoftPrefetch) {
       io.out(i).bits.ctrl.fuType := FuType.ldu
       io.out(i).bits.ctrl.fuOpType := Mux(io.in(i).bits.ctrl.lsrc(1) === 1.U, LSUOpType.prefetch_r, LSUOpType.prefetch_w)

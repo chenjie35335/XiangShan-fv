@@ -1,0 +1,15 @@
+diff --git a/src/main/scala/xiangshan/backend/fu/Alu.scala b/src/main/scala/xiangshan/backend/fu/Alu.scala
+index 9ab325c93..bbaec5328 100644
+--- a/src/main/scala/xiangshan/backend/fu/Alu.scala
++++ b/src/main/scala/xiangshan/backend/fu/Alu.scala
+@@ -29,7 +29,9 @@ class AddModule(implicit p: Parameters) extends XSModule {
+     val add = Output(UInt(XLEN.W))
+     val addw = Output(UInt((XLEN/2).W))
+   })
+-  io.add := io.src(0) + io.src(1)
++  val addRes = Wire(UInt(XLEN.W))
++  addRes := io.src(0) + io.src(1)
++  io.add := Cat(addRes(XLEN - 1, 1), 0.U(1.W))
+   // TODO: why this extra adder?
+   io.addw := io.srcw + io.src(1)(31,0)
+ }
